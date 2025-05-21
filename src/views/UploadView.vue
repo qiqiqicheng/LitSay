@@ -63,10 +63,6 @@
             :customRequest="customRequest"
             :show-preview-icon="true"
             :show-remove-icon="true"
-            <!--
-            @preview="handlePreview"
-            --
-          >
             >
             <p class="ant-upload-drag-icon">
               <inbox-outlined />
