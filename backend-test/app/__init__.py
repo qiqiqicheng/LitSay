@@ -29,15 +29,30 @@ def create_app(config_name='default'):
     app.logger.info(f"Upload folder: {app.config['UPLOAD_FOLDER']}")
 
     bcrypt.init_app(app)
-    CORS(app)
+    CORS(app, resources={r"/*": {"origins": "*"}})
     init_db_app(app)
 
-    # # Register blueprints
+    # Register blueprints
     from .auth.routes import auth_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
     from .papers.routes import papers_bp
     app.register_blueprint(papers_bp, url_prefix='/api/papers')
+    
+    from .parse.routes import parse_bp
+    app.register_blueprint(parse_bp, url_prefix='/api/parse')
+    
+    from .folders.routes import folders_bp
+    app.register_blueprint(folders_bp, url_prefix='/api/folder')
+    
+    from .documents.routes import documents_bp
+    app.register_blueprint(documents_bp, url_prefix='/api/document')
+    
+    from .user.routes import user_bp
+    app.register_blueprint(user_bp, url_prefix='/api/user')
+    
+    from .upload.routes import upload_bp
+    app.register_blueprint(upload_bp, url_prefix='/api/upload')
 
     # Basic root route for health check or API info
     # curl --noproxy "127.0.0.1" http://127.0.0.1:5000/api/health

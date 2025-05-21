@@ -63,11 +63,8 @@
             :customRequest="customRequest"
             :show-preview-icon="true"
             :show-remove-icon="true"
-            <!--
             @preview="handlePreview"
-            --
           >
-            >
             <p class="ant-upload-drag-icon">
               <inbox-outlined />
             </p>
@@ -242,13 +239,9 @@
                   <a-form-item label="角色">
                     <a-select v-model:value="author.sequence">
                       <a-select-option value="first">第一作者</a-select-option>
-                      <a-select-option value="corresponding"
-                        >通讯作者</a-select-option
-                      >
-                      <a-select-option value="additional"
-                        >合作者</a-select-option
-                      >
-                      <a-select-option value="-">未知</a-select-option>
+                      <a-select-option value="corresponding">通讯作者</a-select-option>
+                      <a-select-option value="additional">合作者</a-select-option>
+                      <a-select-option value="other">其他</a-select-option>
                     </a-select>
                   </a-form-item>
                 </a-col>
@@ -420,7 +413,7 @@ import {
   parsePdfMetadata,
   parsePdfMetadataWithAI,
   uploadMetadataFiles,
-  saveMetadataOnly,
+  saveMetadataOnly, // 添加导入这个函数
 } from "@/api/upload";
 
 // 路由和导航
@@ -532,15 +525,17 @@ const customRequest = (options: any) => {
 };
 
 // 修改文件预览处理
-// const handlePreview = async (file: any) => {
-//   if (file.url || file.thumbUrl) {
-//     window.open(file.url || file.thumbUrl);
-//   } else {
-//     message.info(
-//       `文件名: ${file.name}, 大小: ${(file.size / 1024 / 1024).toFixed(2)}MB`
-//     );
-//   }
-// };
+const handlePreview = async (file: any) => {
+  // 防止错误HTML显示，改为展示文件信息
+  if (file.url || file.thumbUrl) {
+    window.open(file.url || file.thumbUrl);
+  } else {
+    // 如果没有URL，显示文件信息
+    message.info(
+      `文件名: ${file.name}, 大小: ${(file.size / 1024 / 1024).toFixed(2)}MB`
+    );
+  }
+};
 
 // 文件上传前验证
 function beforePdfUpload(file: File) {
@@ -612,6 +607,7 @@ async function handlePdfUpload() {
     const files = pdfFileList.value.map((file) => file.originFileObj);
 
     for (const file of files) {
+      console.log("=====解析文件=====", file);
       let result;
       if (parseMethod.value === "ai") {
         result = await parsePdfMetadataWithAI(file);
@@ -627,7 +623,7 @@ async function handlePdfUpload() {
           metadata: formatMetadata(result.metadata),
         });
       }
-      // console.log("解析结果：", parseResults);
+      console.log("解析结果：", parseResults);
     }
 
     // 关闭加载提示
@@ -650,6 +646,7 @@ async function handlePdfUpload() {
 
 // 格式化元数据，确保包含所有必要的字段
 function formatMetadata(metadata: any) {
+  // 确保必要的作者信息格式正确
   const authors = metadata.authors || [];
   const formattedAuthors =
     authors.map((author: string, index: number) => {
@@ -662,6 +659,7 @@ function formatMetadata(metadata: any) {
       };
     }) || [];
 
+  // 如果没有作者，添加一个空作者项
   if (formattedAuthors.length === 0) {
     formattedAuthors.push({
       name: "",
@@ -689,6 +687,7 @@ function formatMetadata(metadata: any) {
     journal: metadata.journal || null,
     conference: metadata.conference || null,
     keywords: metadata.keywords || [],
+    // 不包括 fileType, fileSize, abstract 字段
   };
 }
 
