@@ -8,7 +8,9 @@
         :loading="loading"
         @click="refreshFolderTree"
       >
-        <template #icon><reload-outlined /></template>
+        <template #icon>
+          <reload-outlined />
+        </template>
       </a-button>
     </div>
 
@@ -25,42 +27,63 @@
             title: 'label',
             children: 'children',
           }"
+          :show-icon="false"
         >
-          <template #title="{ label, id }">
-            <span v-if="editingKey === id">
-              <a-input
-                v-model:value="editingName"
-                size="small"
-                style="width: 100px"
-                @pressEnter="handleRenameConfirm"
-                @blur="handleRenameCancel"
-                ref="editInput"
-              />
-            </span>
-            <span v-else class="tree-node-title">
-              <folder-outlined /> {{ label }}
-              <div class="node-actions">
-                <a-dropdown :trigger="['click']">
-                  <more-outlined
-                    class="action-icon"
-                    @click.stop="onNodeActionClick"
-                  />
-                  <template #overlay>
-                    <a-menu @click="(e) => onMenuClick(e, id)">
-                      <a-menu-item key="rename">
-                        <edit-outlined /> 重命名
-                      </a-menu-item>
-                      <a-menu-item key="new">
-                        <folder-add-outlined /> 添加子文件夹
-                      </a-menu-item>
-                      <a-menu-item key="delete" danger>
-                        <delete-outlined /> 删除
-                      </a-menu-item>
-                    </a-menu>
-                  </template>
-                </a-dropdown>
-              </div>
-            </span>
+          <!-- 合并icon和title为自定义title插槽 -->
+          <template #title="{ label, id, expanded }">
+            <div class="tree-node-row">
+              <!-- 下拉箭头，旋转控制 -->
+              <span
+                class="tree-switcher"
+                :class="{ 'tree-switcher-open': expanded }"
+                @click.stop
+              >
+                <!-- <DownOutlined /> -->
+              </span>
+              <!-- 文件夹图标 -->
+              <span class="folder-icon-wrap">
+                <folder-filled
+                  v-if="expanded"
+                  class="folder-icon folder-open"
+                />
+                <folder-outlined v-else class="folder-icon folder-closed" />
+              </span>
+              <!-- 文件夹名称和操作 -->
+              <span v-if="editingKey === id">
+                <a-input
+                  v-model:value="editingName"
+                  size="small"
+                  style="width: 100px"
+                  @pressEnter="handleRenameConfirm"
+                  @blur="handleRenameCancel"
+                  ref="editInput"
+                />
+              </span>
+              <span v-else class="tree-node-title">
+                {{ label }}
+                <div class="node-actions">
+                  <a-dropdown :trigger="['click']">
+                    <more-outlined
+                      class="action-icon"
+                      @click.stop="onNodeActionClick"
+                    />
+                    <template #overlay>
+                      <a-menu @click="(e) => onMenuClick(e, id)">
+                        <a-menu-item key="rename">
+                          <edit-outlined /> 重命名
+                        </a-menu-item>
+                        <a-menu-item key="new">
+                          <folder-add-outlined /> 添加子文件夹
+                        </a-menu-item>
+                        <a-menu-item key="delete" danger>
+                          <delete-outlined /> 删除
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+                </div>
+              </span>
+            </div>
           </template>
         </a-tree>
         <a-empty v-else description="暂无文件夹" />
@@ -87,16 +110,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, onUnmounted } from "vue";
+import { ref, computed, onMounted, nextTick, onUnmounted, h } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { message, Modal } from "ant-design-vue";
 import {
   FolderOutlined,
+  FolderFilled,
   FolderAddOutlined,
   EditOutlined,
   DeleteOutlined,
   MoreOutlined,
   ReloadOutlined,
+  DownOutlined,
 } from "@ant-design/icons-vue";
 import {
   getFolderStructure,
@@ -319,7 +344,7 @@ const confirmDeleteFolder = (folderId: string | number) => {
 
 // 监听文件夹变化事件
 onMounted(() => {
-  // 初始加载文��夹结构
+  // 初始加载文件夹结构
   fetchFolderTree();
 
   // 订阅文件夹结构变更事件
@@ -340,25 +365,28 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Helvetica Neue", Arial, sans-serif;
 }
 
 .folder-tree-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 16px;
+  padding: 6px 12px;
   border-bottom: 1px solid #f0f0f0;
 }
 
 .folder-tree-header .title {
   font-weight: 500;
-  font-size: 16px;
+  font-size: 14px;
+  color: #333;
 }
 
 .folder-tree-content {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 4px 0;
 }
 
 .tree-node-title {
@@ -366,6 +394,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  font-size: 13px;
+  color: #333;
 }
 
 .node-actions {
@@ -387,38 +417,87 @@ onUnmounted(() => {
   padding: 2px;
 }
 
-/* 减少树形控件的缩进距离 */
-:deep(.ant-tree) .ant-tree-treenode {
-  padding: 0; /* 移除默认内边距 */
-}
-
-:deep(.ant-tree) .ant-tree-node-content-wrapper {
-  padding: 2px 8px; /* 减小垂直内边距，从4px减小到2px */
-}
-
-:deep(.ant-tree-child-tree) {
-  padding-left: 12px !important;
-}
-
-:deep(.ant-tree-iconEle) {
-  margin-right: 24px !important; /* 增大图标右边距，从18px增加到24px */
-}
-
-/* 优化图标与文本的对齐方式 */
-:deep(.ant-tree-title) {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px; /* 增加图标和文字间距，从8px增加到12px */
-}
-
-/* 确保树节点内容垂直居中 */
-:deep(.ant-tree-node-content-wrapper) {
+/* 新增：让图标和文字并排显示 */
+.tree-node-row {
   display: flex;
   align-items: center;
+  gap: 4px;
 }
 
-/* 优化树节点的交互效果 */
-:deep(.ant-tree-node-content-wrapper):hover {
-  background-color: rgba(0, 0, 0, 0.04);
+/* 下拉箭头样式及旋转动画 */
+.tree-switcher {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 10px;
+  height: 24px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  margin-right: 2px;
+  color: #bfbfbf;
+}
+.tree-switcher.tree-switcher-open {
+  transform: rotate(90deg);
+  color: #409eff;
+}
+
+/* 文件夹图标样式 */
+.folder-icon-wrap {
+  display: flex;
+  align-items: center;
+  margin-right: 2px;
+}
+.folder-icon {
+  font-size: 14px;
+}
+
+.folder-closed {
+  color: #91a7ff;
+}
+
+.folder-open {
+  color: #4263eb;
+}
+
+/* 调整树的整体样式 */
+:deep(.ant-tree) {
+  font-size: 13px;
+  background: transparent;
+}
+
+/* 减少缩进距离 */
+:deep(.ant-tree-treenode) {
+  padding: 0 0 2px 0 !important;
+  margin: 0;
+  line-height: 24px;
+}
+
+/* 优化树节点内容 */
+:deep(.ant-tree-node-content-wrapper) {
+  min-height: 24px;
+  line-height: 24px;
+  padding: 0 6px !important;
+  transition: background-color 0.2s;
+}
+
+:deep(.ant-tree-switcher) {
+  width: 18px;
+  height: 24px;
+  line-height: 24px;
+  margin-right: 0;
+}
+
+/* 使树节点更紧凑 */
+:deep(.ant-tree-indent-unit) {
+  width: 12px !important;
+}
+
+/* 选中状态样式 */
+:deep(.ant-tree-node-selected) {
+  background-color: #e6f7ff !important;
+}
+
+:deep(.ant-tree-node-content-wrapper:hover) {
+  background-color: #f5f5f5;
 }
 </style>
