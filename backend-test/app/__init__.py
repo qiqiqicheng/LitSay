@@ -1,10 +1,11 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, make_response
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
 
 import os
 import logging
 import mysql.connector
+import sys
 
 from .config import config
 from .db import init_app as init_db_app
@@ -20,16 +21,24 @@ def create_app(config_name='default'):
         os.makedirs(upload_folder)
     app.config['UPLOAD_FOLDER'] = os.path.abspath(upload_folder)
 
+    # 修改日志配置，确保输出到终端
     if not app.debug and not app.testing:
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     else:
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
     app.logger.info(f"Starting app in {config_name} mode.")
     app.logger.info(f"Database: {app.config.get('OB_DATABASE')}")
     app.logger.info(f"Upload folder: {app.config['UPLOAD_FOLDER']}")
 
     bcrypt.init_app(app)
-    CORS(app, resources={r"/*": {"origins": "*"}})
+    
+    # 更新CORS配置
+    CORS(app, resources={r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"]
+    }})
+    
     init_db_app(app)
 
     # Register blueprints
@@ -53,6 +62,21 @@ def create_app(config_name='default'):
     
     from .upload.routes import upload_bp
     app.register_blueprint(upload_bp, url_prefix='/api/upload')
+    
+    from .search.routes import search_bp
+    app.register_blueprint(search_bp, url_prefix='/api/search')
+
+    # 全局 OPTIONS 请求处理器
+    @app.route('/<path:path>', methods=['OPTIONS'])
+    @app.route('/', methods=['OPTIONS'])
+    def handle_global_options_request(*args, **kwargs):
+        response = make_response()
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        response.headers.add('Access-Control-Max-Age', '3600')  # 缓存预检响应1小时
+        response.status_code = 200
+        return response
 
     # Basic root route for health check or API info
     # curl --noproxy "127.0.0.1" http://127.0.0.1:5000/api/health
