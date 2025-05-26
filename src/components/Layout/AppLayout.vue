@@ -277,7 +277,7 @@ import { logout } from "@/api/auth";
 import { useEventBus } from "@vueuse/core";
 
 // 添加这一行解决showUserDrawer未定义的问题
-const showUserDrawer = ref(false); 
+const showUserDrawer = ref(false);
 
 // 注册图标组件，使其在模板中可用
 const icons = {
@@ -387,7 +387,7 @@ const handleSearch = () => {
     // 直接跳转到搜索结果页面
     router.push({
       path: "/search",
-      query: { q: searchQuery.value }
+      query: { q: searchQuery.value },
     });
   }
 };

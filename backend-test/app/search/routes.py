@@ -47,40 +47,53 @@ def search_library():
     results = []
     
     try:
-        # 搜索文档标题 (最多4个结果)
+        # 搜索文档标题和DOI (最多4个结果)
         documents = query_db("""
-            SELECT document_id as id, title as name, 'document' as type, 'title' as matchField, 
-                   dir.directory_name as folderName, dir.directory_id as folderId
+            SELECT document_id as id, title as name, 'document' as type, 
+                   CASE 
+                       WHEN doi = %s THEN 'doi'
+                       WHEN doi LIKE %s THEN 'doi'
+                       ELSE 'title'
+                   END as matchField,
+                   dir.directory_name as folderName, dir.directory_id as folderId,
+                   doi
             FROM document d
             JOIN directory dir ON d.directory_id = dir.directory_id
-            WHERE d.user_id = %s AND d.title LIKE %s
+            WHERE d.user_id = %s AND (d.title LIKE %s OR d.doi LIKE %s OR d.doi = %s)
             ORDER BY CASE 
-                WHEN d.title LIKE %s THEN 0  -- 完全匹配
-                WHEN d.title LIKE %s THEN 1  -- 开头匹配
-                ELSE 2                      -- 包含匹配
+                WHEN d.doi = %s THEN 0           -- DOI精确匹配优先级最高
+                WHEN d.title = %s THEN 1          -- 标题精确匹配次之
+                WHEN d.title LIKE %s THEN 2       -- 标题开头匹配
+                WHEN d.doi LIKE %s THEN 3         -- DOI部分匹配
+                ELSE 4                            -- 标题包含匹配
             END
-        """, (user_id, search_term, query, f"{query}%"))
+            LIMIT 10
+        """, (query, search_term, user_id, search_term, search_term, query, query, query, f"{query}%", search_term))
         
         # 构建文档路径
         for doc in documents:
             doc['path'] = f"文件夹: {doc['folderName']}"
+            if doc['matchField'] == 'doi' and doc.get('doi'):
+                doc['matchDetail'] = f"DOI: {doc['doi']}"
             results.append(doc)
         
-        # 搜索作者名称 (最多2个结果)
+        # 搜索作者名称 (最多3个结果)
         authors = query_db("""
             SELECT DISTINCT a.author_id as id, a.author_name as name, 'author' as type, 'author' as matchField
             FROM author a
             WHERE a.user_id = %s AND a.author_name LIKE %s
+            LIMIT 3
         """, (user_id, search_term))
         
         results.extend(authors)
         
-        # 搜索机构名称 (最多2个结果)
+        # 搜索机构名称 (最多3个结果)
         institutions = query_db("""
             SELECT DISTINCT i.institution_id as id, i.institution_name as name, 'institution' as type, 
                    'affiliation' as matchField, i.institution_location as location
             FROM institution i
             WHERE i.user_id = %s AND i.institution_name LIKE %s
+            LIMIT 3
         """, (user_id, search_term))
         
         for inst in institutions:

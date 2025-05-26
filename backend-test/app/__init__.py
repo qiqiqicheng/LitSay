@@ -65,6 +65,17 @@ def create_app(config_name='default'):
     
     from .search.routes import search_bp
     app.register_blueprint(search_bp, url_prefix='/api/search')
+    
+    # 注册作者和机构蓝图
+    from .author.routes import author_bp
+    app.register_blueprint(author_bp, url_prefix='/api/author')
+    
+    from .institution.routes import institution_bp
+    app.register_blueprint(institution_bp, url_prefix='/api/institution')
+    
+    # 注册容器蓝图（期刊/会议）
+    from .container.routes import container_bp
+    app.register_blueprint(container_bp, url_prefix='/api/container')
 
     # 全局 OPTIONS 请求处理器
     @app.route('/<path:path>', methods=['OPTIONS'])

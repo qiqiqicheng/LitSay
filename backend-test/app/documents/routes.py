@@ -17,7 +17,7 @@ def get_document_details(document_id):
             SELECT d.document_id, d.title, d.doi, d.local_url, 
                    d.publication_date as publishDate, d.create_time as uploadTime,
                    dir.directory_name as folderName, dir.directory_id as folderId,
-                   d.stars, d.note
+                   d.stars, d.note, d.container_id
             FROM document d
             JOIN directory dir ON d.directory_id = dir.directory_id
             WHERE d.document_id = %s AND d.user_id = %s
@@ -27,7 +27,7 @@ def get_document_details(document_id):
             return jsonify({"error": "未找到", "message": "文档不存在或无权访问"}), 404
         
         authors_data = query_db("""
-            SELECT a.author_name, da.sequence, 
+            SELECT a.author_id, a.author_name, da.sequence, 
                    i.institution_name, i.institution_location, a.author_email
             FROM author a
             JOIN document_author da ON a.author_id = da.author_id
@@ -54,6 +54,7 @@ def get_document_details(document_id):
             "id": document['document_id'],
             "title": document['title'],
             "authors": [],
+            "author_ids": [],  # 明确添加author_ids数组
             "sequence": [],
             "institutions": [],
             "institution_location": [],
@@ -68,12 +69,14 @@ def get_document_details(document_id):
             "folderName": document['folderName'],
             "note": document['note'],
             "stars": document['stars'],
-            "local_url": document['local_url']
+            "local_url": document['local_url'],
+            "container_id": document['container_id']  # 明确返回container_id
         }
         
         # 处理作者信息 - 直接使用字符串sequence，并添加机构和地址
         for author in authors_data:
             result['authors'].append(author['author_name'])
+            result['author_ids'].append(author['author_id'])  # 存储作者ID
             result['sequence'].append(author['sequence'] if author['sequence'] else 'other')
             result['institutions'].append(author['institution_name'] if author['institution_name'] else '')
             result['institution_location'].append(author['institution_location'] if author['institution_location'] else '')

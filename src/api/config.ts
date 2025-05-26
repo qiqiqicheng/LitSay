@@ -25,10 +25,10 @@ export const DEFAULT_REQUEST_CONFIG = {
  * 获取包含认证信息的请求头
  */
 export const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
   return {
-    'Authorization': token ? `Bearer ${token}` : '',
-    'Content-Type': 'application/json'
+    Authorization: token ? `Bearer ${token}` : "",
+    "Content-Type": "application/json",
   };
 };
 
@@ -36,8 +36,8 @@ export const getAuthHeaders = () => {
  * 获取简单请求的认证参数（适用于避免OPTIONS预检请求的场景）
  */
 export const getAuthParams = () => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
   return {
-    token: token || ''
+    token: token || "",
   };
 };

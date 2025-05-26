@@ -82,7 +82,10 @@
       </div>
       <div v-else class="results-container">
         <!-- 文献结果 -->
-        <div v-if="showCategoryResults('document').length > 0" class="result-category">
+        <div
+          v-if="showCategoryResults('document').length > 0"
+          class="result-category"
+        >
           <div class="category-header">
             <FileOutlined class="category-icon document-icon" />
             <h3>文献</h3>
@@ -90,7 +93,7 @@
           <div class="result-items">
             <div
               v-for="item in showCategoryResults('document')"
-              :key="`doc-${item.id}`"
+              :key="'doc-' + item.id"
               class="result-item"
               @click="handleItemClick(item)"
             >
@@ -101,9 +104,12 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 作者结果 -->
-        <div v-if="showCategoryResults('author').length > 0" class="result-category">
+        <div
+          v-if="showCategoryResults('author').length > 0"
+          class="result-category"
+        >
           <div class="category-header">
             <UserOutlined class="category-icon author-icon" />
             <h3>作者</h3>
@@ -111,8 +117,9 @@
           <div class="result-items">
             <div
               v-for="item in showCategoryResults('author')"
-              :key="`author-${item.id}`"
+              :key="'author-' + item.id"
               class="result-item"
+              @click="handleItemClick(item)"
             >
               <div class="item-content">
                 <div class="item-title">{{ item.name }}</div>
@@ -120,9 +127,12 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 机构结果 -->
-        <div v-if="showCategoryResults('institution').length > 0" class="result-category">
+        <div
+          v-if="showCategoryResults('institution').length > 0"
+          class="result-category"
+        >
           <div class="category-header">
             <BankOutlined class="category-icon institution-icon" />
             <h3>机构</h3>
@@ -130,8 +140,9 @@
           <div class="result-items">
             <div
               v-for="item in showCategoryResults('institution')"
-              :key="`inst-${item.id}`"
+              :key="'inst-' + item.id"
               class="result-item"
+              @click="handleItemClick(item)"
             >
               <div class="item-content">
                 <div class="item-title">{{ item.name }}</div>
@@ -141,8 +152,6 @@
           </div>
         </div>
       </div>
-
-      <!-- 移除分页容器 -->
     </div>
   </div>
 </template>
@@ -153,7 +162,11 @@ import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { Document, Folder } from "@element-plus/icons-vue";
 import { searchLibrary } from "@/api/load";
-import { FileOutlined, UserOutlined, BankOutlined } from "@ant-design/icons-vue";
+import {
+  FileOutlined,
+  UserOutlined,
+  BankOutlined,
+} from "@ant-design/icons-vue";
 
 // 定义搜索结果类型
 interface SearchResult {
@@ -200,7 +213,7 @@ const showCategoryResults = (category: string) => {
   if (activeFilter.value !== "all" && activeFilter.value !== category) {
     return [];
   }
-  return searchResults.value.filter(item => item.type === category);
+  return searchResults.value.filter((item) => item.type === category);
 };
 
 // 判断是否有高级筛选
@@ -234,9 +247,9 @@ const performSearch = async () => {
 
     const response = await searchLibrary(searchQuery.value, searchParams);
     searchResults.value = response.data.data?.results || [];
-    
+
     // 移除重置分页的代码
-    // currentPage.value = 1; 
+    // currentPage.value = 1;
   } catch (error) {
     console.error("搜索失败", error);
     ElMessage.error("搜索失败，请稍后重试");
@@ -281,6 +294,10 @@ const filterResults = () => {
 const handleItemClick = (row: SearchResult) => {
   if (row.type === "document") {
     router.push(`/document/${row.id}`);
+  } else if (row.type === "author") {
+    router.push(`/author/${row.id}`);
+  } else if (row.type === "institution") {
+    router.push(`/institution/${row.id}`);
   }
   // 其他类型暂不处理点击事件
 };
