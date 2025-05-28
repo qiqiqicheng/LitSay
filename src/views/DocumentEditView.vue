@@ -97,6 +97,7 @@
                 <a-input
                   v-model:value="author.location"
                   placeholder="机构所在地"
+                  @blur="syncInstitutionLocation(author.institution, author.location)"
                 />
               </a-form-item>
             </a-col>
@@ -223,7 +224,7 @@
 import { ref, onMounted, reactive } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus"; // ElMessage for consistency if used elsewhere
-import { message as AntMessage } from "ant-design-vue"; // Ant Design Vue message
+import { message as AntMessage, Modal } from "ant-design-vue"; // Ant Design Vue message
 import { ArrowLeft } from "@element-plus/icons-vue";
 import { UserAddOutlined, EditOutlined } from "@ant-design/icons-vue";
 import { getDocumentDetails, updateDocumentMetadata } from "@/api/load"; // Assuming getDocumentDetails is available
@@ -330,6 +331,17 @@ const addAuthor = () => {
 
 const removeAuthor = (index: number) => {
   documentForm.authors.splice(index, 1);
+};
+
+// Method to synchronize institution locations
+const syncInstitutionLocation = (institutionName: string, newLocation: string) => {
+  if (!institutionName) return; // Only sync if institution name is present
+  documentForm.authors.forEach(author => {
+    if (author.institution === institutionName) {
+      author.location = newLocation;
+    }
+  });
+  console.log(`Synced location for institution "${institutionName}" to "${newLocation}"`);
 };
 
 const saveDocument = async () => {

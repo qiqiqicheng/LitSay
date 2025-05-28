@@ -41,7 +41,8 @@
                 <a-radio-group v-model:value="parseMethod" button-style="solid">
                   <a-radio-button value="normal">普通解析</a-radio-button>
                   <a-radio-button value="ai" class="ai-button">
-                    <robot-outlined />
+                    <!--                    <robot-outlined />-->
+                    <ExperimentOutlined />
                     AI智能解析
                   </a-radio-button>
                 </a-radio-group>
@@ -68,7 +69,7 @@
               <inbox-outlined />
             </p>
             <p class="ant-upload-text">点击或拖动PDF文件到此区域上传</p>
-            <p class="ant-upload-hint">
+            <p class="ant-upload-hint>
               支持批量上传PDF文件，将自动解析文献元数据
             </p>
           </a-upload-dragger>
@@ -114,15 +115,13 @@
             :multiple="true"
             :before-upload="beforeMetadataUpload"
             :remove="handleFileRemove"
-            accept=".json,.xlsx,.csv"
+            accept=".json,.csv"
           >
             <p class="ant-upload-drag-icon">
               <file-outlined />
             </p>
             <p class="ant-upload-text">点击或拖动元数据文件到此区域上传</p>
-            <p class="ant-upload-hint">
-              支持JSON、XLSX和CSV文件格式的批量元数据导入
-            </p>
+            <p class="ant-upload-hint">支持JSON、CSV文件格式的批量元数据导入</p>
           </a-upload-dragger>
 
           <div class="upload-actions">
@@ -270,7 +269,10 @@
                 </a-col>
                 <a-col :span="12">
                   <a-form-item label="机构所在地">
-                    <a-input v-model:value="author.location" />
+                    <a-input 
+                      v-model:value="author.location" 
+                      @blur="syncInstitutionLocationInUpload(author.institution, author.location)"
+                    />
                   </a-form-item>
                 </a-col>
               </a-row>
@@ -405,6 +407,7 @@ import {
   CloudUploadOutlined,
   ImportOutlined,
   RobotOutlined,
+  ExperimentOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   DeleteOutlined, // 添加删除图标
@@ -415,7 +418,8 @@ import {
   uploadPdfFiles,
   parsePdfMetadata,
   parsePdfMetadataWithAI,
-  uploadMetadataFiles,
+  parseMetadataFile,
+  saveBatchMetadata,
   saveMetadataOnly,
 } from "@/api/upload";
 
@@ -550,17 +554,15 @@ function beforePdfUpload(file: File) {
   return false;
 }
 
+// 文件上传前验证 - 修改为只允许JSON和CSV
 function beforeMetadataUpload(file: File) {
-  const isJson = file.type === "application/json";
-  const isExcel =
-    file.type ===
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-    file.type === "application/vnd.ms-excel";
-  const isCsv = file.type === "text/csv";
+  const isJson =
+    file.type === "application/json" || file.name.endsWith(".json");
+  const isCsv = file.type === "text/csv" || file.name.endsWith(".csv");
 
-  const isValid = isJson || isExcel || isCsv;
+  const isValid = isJson || isCsv;
   if (!isValid) {
-    message.error(`${file.name} 不是支持的文件格式`);
+    message.error(`${file.name} 不是支持的文件格式，仅支持CSV和JSON文件`);
     return Upload.LIST_IGNORE;
   }
 
@@ -810,7 +812,7 @@ function handleCancelUpload() {
   });
 }
 
-// 上传元数据文件
+// 修改上传元数据文件的处理方法
 async function handleMetadataUpload() {
   if (metadataFileList.value.length === 0) {
     message.warning("请选择元数据文件");
@@ -823,27 +825,54 @@ async function handleMetadataUpload() {
   }
 
   uploading.value = true;
-  message.loading("正在上传元数据文件...", 0);
+  message.loading("正在解析元数据文件...", 0);
 
   try {
     const files = metadataFileList.value.map((file) => file.originFileObj);
+    let allMetadata: any[] = [];
+    let processedFiles: string[] = [];
 
-    // 调用API上传元数据文件
-    const response = await uploadMetadataFiles(files, selectedFolderId.value);
+    // 在前端解析所有文件
+    for (const file of files) {
+      try {
+        const metadata = await parseMetadataFile(file);
+        allMetadata = [...allMetadata, ...metadata];
+        processedFiles.push(file.name);
+      } catch (error) {
+        console.error(`解析文件 ${file.name} 失败:`, error);
+        message.error(`解析文件 ${file.name} 失败: ${error}`);
+      }
+    }
 
     message.destroy();
 
+    if (allMetadata.length === 0) {
+      message.error("未能从文件中提取到有效元数据");
+      uploading.value = false;
+      return;
+    }
+    console.log("===解析后的元数据：", allMetadata);
+
+    // 调用API上传解析后的元数据
+    const response = await saveBatchMetadata(
+      allMetadata,
+      selectedFolderId.value
+    );
+
     // 显示上传结果
     uploadSuccess.value = true;
-    uploadResultMessage.value = response.data?.message || "元数据上传成功";
-    uploadedFiles.value = metadataFileList.value.map((file) => file.name);
+    uploadResultMessage.value = `成功导入 ${allMetadata.length} 条元数据记录`;
+    uploadedFiles.value = processedFiles;
     uploadResultVisible.value = true;
 
     // 清空文件列表
     metadataFileList.value = [];
   } catch (error) {
-    console.error("上传元数据文件失败", error);
-    message.error("上传元数据文件失败");
+    console.error("批量导入元数据失败", error);
+    message.error("批量导入元数据失败");
+    uploadSuccess.value = false;
+    uploadResultMessage.value = "批量导入元数据失败，请重试";
+    uploadResultVisible.value = true;
   } finally {
     uploading.value = false;
   }
@@ -864,6 +893,17 @@ function getShortFileName(fileName: string) {
   }
   return fileName;
 }
+
+// Method to synchronize institution locations within the upload modal
+const syncInstitutionLocationInUpload = (institutionName: string, newLocation: string) => {
+  if (!institutionName || !currentParseResult.value) return;
+  currentParseResult.value.metadata.authors.forEach((auth: any) => {
+    if (auth.institution === institutionName) {
+      auth.location = newLocation;
+    }
+  });
+  console.log(`Synced location for institution "${institutionName}" to "${newLocation}" in upload modal`);
+};
 </script>
 
 <style scoped>
@@ -899,8 +939,8 @@ function getShortFileName(fileName: string) {
 }
 
 .ai-button :deep(.ant-radio-button-checked) {
-  background: #f9f0ff;
-  border-color: #722ed1;
+  background: #871ccc;
+  border-color: #ef2192;
 }
 
 /* 解析步骤样式 */

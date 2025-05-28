@@ -195,7 +195,7 @@ export const parsePdfMetadataWithAI = async (file: File) => {
 };
 
 /**
- * 上传元数据文件 (JSON/XLSX/CSV)
+ * 上传元数据文件 (JSON/CSV)
  * @param files 元数据文件数组
  * @param folderId 目标文件夹ID
  * @returns Promise
@@ -312,6 +312,133 @@ export const saveMetadataOnly = async (
     return response;
   } catch (error) {
     console.error("保存元数据失败", error);
+    throw error;
+  }
+};
+
+/**
+ * 解析元数据文件 (CSV, JSON) - 本地解析
+ * @param file 元数据文件
+ * @returns Promise 包含解析后的元数据
+ */
+export const parseMetadataFile = async (file: File): Promise<any[]> => {
+  return new Promise((resolve, reject) => {
+    // 判断文件类型
+    if (file.name.endsWith('.json')) {
+      // JSON文件解析
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const jsonData = JSON.parse(e.target?.result as string);
+          // 确保数据是数组格式
+          const metadataArray = Array.isArray(jsonData) ? jsonData : [jsonData];
+          resolve(metadataArray);
+        } catch (error) {
+          reject(new Error(`JSON解析错误: ${error}`));
+        }
+      };
+      reader.onerror = () => reject(new Error("读取JSON文件失败"));
+      reader.readAsText(file);
+    } 
+    else if (file.name.endsWith('.csv')) {
+      // CSV文件解析
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const csvText = e.target?.result as string;
+          const metadataArray = parseCSV(csvText);
+          resolve(metadataArray);
+        } catch (error) {
+          reject(new Error(`CSV解析错误: ${error}`));
+        }
+      };
+      reader.onerror = () => reject(new Error("读取CSV文件失败"));
+      reader.readAsText(file);
+    } 
+    else {
+      reject(new Error("不支持的文件格式，仅支持JSON和CSV"));
+    }
+  });
+};
+
+/**
+ * CSV解析函数
+ * @param csvText CSV文本内容
+ * @returns 解析后的对象数组
+ */
+const parseCSV = (csvText: string): any[] => {
+  // 分割行
+  const lines = csvText.split(/\r\n|\n/);
+  if (lines.length < 2) throw new Error("CSV文件格式错误或为空");
+  
+  // 提取表头
+  const headers = lines[0].split(',').map(header => header.trim());
+  
+  // 解析每行数据
+  const results: any[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue; // 跳过空行
+    
+    const obj: any = {};
+    const currentLine = lines[i].split(',').map(cell => cell.trim());
+    
+    // 确保有足够的列
+    if (currentLine.length < headers.length) continue;
+    
+    // 映射列到字段
+    for (let j = 0; j < headers.length; j++) {
+      const value = currentLine[j];
+      // 对特殊字段进行处理
+      if (headers[j] === 'authors' || headers[j] === 'keywords') {
+        obj[headers[j]] = value ? value.split(';').map(item => item.trim()) : [];
+      } else {
+        obj[headers[j]] = value;
+      }
+    }
+    results.push(obj);
+  }
+  
+  return results;
+};
+
+/**
+ * 批量保存元数据 (不包含文件上传)
+ * @param metadataList 元数据列表
+ * @param folderId 目标文件夹ID
+ * @returns Promise 包含操作结果
+ */
+export const saveBatchMetadata = async (metadataList: any[], folderId: string | number) => {
+  // 如果是开发环境，模拟保存
+  // if (process.env.NODE_ENV === "not") {
+  //   console.log("[Dev Mode] 模拟批量保存元数据:", { metadataList, folderId });
+  //   return Promise.resolve({
+  //     data: {
+  //       code: 0,
+  //       message: "批量导入元数据成功",
+  //       data: {
+  //         importedCount: metadataList.length,
+  //         success: true,
+  //       },
+  //     },
+  //   });
+  // }
+
+  // 生产环境使用实际API
+  try {
+    const response = await axios.post(
+      buildApiPath("/upload/metadata"),
+      { 
+        metadataList,
+        folderId,
+        userId: getCurrentUserId()
+      },
+      { 
+        headers: getAuthHeaders()
+      }
+    );
+    return response;
+  } catch (error) {
+    console.error("批量保存元数据失败", error);
     throw error;
   }
 };

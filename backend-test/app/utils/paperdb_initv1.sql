@@ -52,17 +52,17 @@ CREATE TABLE `container` (
 -- 论文表
 -- ----------------------------
 CREATE TABLE `document` (
-  `document_id` int(11) NOT NULL AUTO_INCREMENT,
-  `directory_id` int(11) NOT NULL,
-  `container_id` int(11) DEFAULT NULL,
-  `user_id` int(11) NOT NULL,
+  `document_id` INT AUTO_INCREMENT PRIMARY KEY,
+  `directory_id` INT NOT NULL,
+  `container_id` INT DEFAULT NULL,
+  `user_id` INT NOT NULL,
   `title` varchar(255) NOT NULL,
   `doi` varchar(40) DEFAULT NULL,
   `local_url` varchar(1024) DEFAULT NULL,
   `publication_date` timestamp NULL DEFAULT NULL,
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `stars` int(11) DEFAULT NULL,
-  `note` text DEFAULT NULL,
+  `stars` INT DEFAULT NULL,
+  `note` TEXT DEFAULT NULL,
   FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`directory_id`) REFERENCES `directory` (`directory_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`container_id`) REFERENCES `container` (`container_id`) ON DELETE
@@ -106,10 +106,12 @@ CREATE TABLE `keyword` (
 CREATE TABLE `document_author` (
   `document_id` INT NOT NULL,
   `author_id` INT NOT NULL,
-  `sequence` VARCHAR(255) NOT NULL COMMENT '作者顺序',
+  `institution_id` INT DEFAULT NULL,
+  `sequence` VARCHAR(255) NULL COMMENT '作者顺序',
   PRIMARY KEY (`document_id`, `author_id`),
   FOREIGN KEY (`document_id`) REFERENCES `document` (`document_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  FOREIGN KEY (`author_id`) REFERENCES `author` (`author_id`) ON DELETE CASCADE ON UPDATE CASCADE
+  FOREIGN KEY (`author_id`) REFERENCES `author` (`author_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (`institution_id`) REFERENCES `institution` (`institution_id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 -- 论文-关键词关系
 CREATE TABLE `document_keyword` (
