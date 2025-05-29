@@ -18,7 +18,6 @@ def save_metadata_only():
         data = request.json
         print(f"收到元数据保存请求: {data}")
         
-        # 检查数据格式并进行适配处理
         if 'metadataList' in data:
             # 新格式，适配处理
             metadata_items = data.get('metadataList', [])
@@ -76,7 +75,7 @@ def save_metadata_only():
                 institution_locations = metadata.get('institution_location', [])
                 emails = metadata.get('email', [])
                 doi = metadata.get('doi')
-                publish_date = metadata.get('publishDate')
+                publish_date = metadata.get('publishDate') or metadata.get('publication_date')
                 journal = metadata.get('journal')
                 journal_issue = metadata.get('journal_issue')
                 conference = metadata.get('conference')
@@ -379,7 +378,8 @@ def upload_metadata():
                 
                 # 提取基本字段
                 doi = metadata.get('doi')
-                publish_date = metadata.get('publishDate')
+                publish_date = metadata.get('publishDate') or metadata.get('publication_date')
+                local_url = metadata.get('local_url', '')
                 
                 # 先处理容器（期刊/会议）
                 container_id = None
@@ -438,15 +438,15 @@ def upload_metadata():
                 
                 # 创建文档记录 - 更新插入语句，使用container_id
                 insert_doc_sql = """INSERT INTO document 
-                       (directory_id, user_id, title, doi, publication_date, container_id)
-                       VALUES (%s, %s, %s, %s, %s, %s)"""
-                
+                       (directory_id, user_id, title, doi, publication_date, container_id, local_url)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s)"""
+
                 print(f"SQL: 创建文档记录 - {insert_doc_sql}")
-                print(f"SQL参数: ({folder_id}, {user_id}, {title}, {doi}, {publish_date}, {container_id})")
-                
+                print(f"SQL参数: ({folder_id}, {user_id}, {title}, {doi}, {publish_date}, {container_id}, {local_url})")
+
                 document_id = query_db(
                     insert_doc_sql,
-                    (folder_id, user_id, title, doi, publish_date, container_id),
+                    (folder_id, user_id, title, doi, publish_date, container_id, local_url),
                     commit=True
                 )
                 

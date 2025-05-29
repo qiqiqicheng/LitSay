@@ -140,5 +140,6 @@ CREATE INDEX `idx_closure_ancestor` ON `directory_closure` (`ancestor_id`);
 CREATE INDEX `idx_closure_descendant` ON `directory_closure` (`descendant_id`);
 CREATE INDEX `idx_keyword_user` ON `keyword` (`user_id`);
 CREATE INDEX `idx_keyword_name` ON `keyword` (`keyword_name`);
+CREATE INDEX `idx_container_name` ON `container` (`container_name`);
 -- 恢复外键检查
 SET FOREIGN_KEY_CHECKS = 1;
