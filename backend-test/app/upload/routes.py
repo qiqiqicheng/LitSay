@@ -247,6 +247,12 @@ def save_metadata_only():
                             VALUES (%s, %s, %s, %s)
                         """, (document_id, author_id, institution_id, author_sequence))
                         conn.commit()  # 提交创建关联事务
+                        # 附带创建作者-机构关联
+                        cursor.execute("""
+                            INSERT INTO author_institution (author_id, institution_id)
+                            VALUES (%s, %s)
+                        """, (author_id, institution_id))
+                        conn.commit()  # 提交作者-机构关联事务
                     
                     # 处理关键字
                     for keyword in keywords:
