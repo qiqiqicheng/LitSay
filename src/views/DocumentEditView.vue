@@ -3,7 +3,8 @@
     <div class="edit-header">
       <div class="back-button">
         <el-button @click="goBack" icon="ArrowLeft" size="small"
-          >返回</el-button
+        >返回
+        </el-button
         >
       </div>
       <h1 class="edit-title">编辑文献信息</h1>
@@ -28,6 +29,17 @@
               <a-input
                 v-model:value="documentForm.title"
                 placeholder="请输入文献标题"
+                size="large"
+              />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-row :gutter="24">
+          <a-col :span="24">
+            <a-form-item label="本地url" name="local_url">
+              <a-input
+                v-model:value="documentForm.local_url"
+                placeholder="请输入本地url"
                 size="large"
               />
             </a-form-item>
@@ -67,7 +79,8 @@
                 >
                   <a-select-option value="first">第一作者</a-select-option>
                   <a-select-option value="corresponding"
-                    >通讯作者</a-select-option
+                  >通讯作者
+                  </a-select-option
                   >
                   <a-select-option value="additional">合作者</a-select-option>
                   <a-select-option value="other">其他</a-select-option>
@@ -97,7 +110,9 @@
                 <a-input
                   v-model:value="author.location"
                   placeholder="机构所在地"
-                  @blur="syncInstitutionLocation(author.institution, author.location)"
+                  @blur="
+                    syncInstitutionLocation(author.institution, author.location)
+                  "
                 />
               </a-form-item>
             </a-col>
@@ -136,7 +151,9 @@
         </div>
         <a-form-item>
           <a-button type="dashed" @click="addAuthor" block>
-            <template #icon><UserAddOutlined /></template>
+            <template #icon>
+              <UserAddOutlined />
+            </template>
             添加作者
           </a-button>
         </a-form-item>
@@ -165,24 +182,75 @@
           </a-col>
         </a-row>
 
+        <!-- 文献类型选择 -->
         <a-row :gutter="24">
-          <a-col :xs="24" :sm="12">
-            <a-form-item label="期刊" name="journal">
-              <a-input
-                v-model:value="documentForm.journal"
-                placeholder="请输入期刊名称"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :sm="12">
-            <a-form-item label="会议" name="conference">
-              <a-input
-                v-model:value="documentForm.conference"
-                placeholder="请输入会议名称"
-              />
+          <a-col :span="24">
+            <a-form-item label="文献类型" name="documentType">
+              <a-radio-group v-model:value="documentType">
+                <a-radio value="journal">期刊文章</a-radio>
+                <a-radio value="conference">会议论文</a-radio>
+                <a-radio value="other">其他</a-radio>
+              </a-radio-group>
             </a-form-item>
           </a-col>
         </a-row>
+
+        <!-- 期刊相关表单项 -->
+        <template v-if="documentType === 'journal'">
+          <a-row :gutter="24">
+            <a-col :xs="24" :sm="12">
+              <a-form-item label="期刊" name="journal">
+                <a-input
+                  v-model:value="documentForm.journal"
+                  placeholder="请输入期刊名称"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12">
+              <a-form-item label="期刊期号" name="journal_issue">
+                <a-input
+                  v-model:value="documentForm.journal_issue"
+                  placeholder="请输入期刊期号"
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+        </template>
+
+        <!-- 会议相关表单项 -->
+        <template v-if="documentType === 'conference'">
+          <a-row :gutter="24">
+            <a-col :xs="24" :sm="12">
+              <a-form-item label="会议" name="conference">
+                <a-input
+                  v-model:value="documentForm.conference"
+                  placeholder="请输入会议名称"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12">
+              <a-form-item label="会议地点" name="conference_location">
+                <a-input
+                  v-model:value="documentForm.conference_location"
+                  placeholder="请输入会议地点"
+                />
+              </a-form-item>
+            </a-col>
+            <!--          </a-row>-->
+            <!--          <a-row :gutter="24">-->
+            <!--            <a-col :xs="24" :sm="12">-->
+            <!--              <a-form-item label="会议日期" name="conference_time">-->
+            <!--                <a-date-picker-->
+            <!--                  v-model:value="documentForm.conference_time"-->
+            <!--                  placeholder="选择会议日期"-->
+            <!--                  style="width: 100%"-->
+            <!--                  format="YYYY-MM-DD"-->
+            <!--                  value-format="YYYY-MM-DD"-->
+            <!--                />-->
+            <!--              </a-form-item>-->
+            <!--            </a-col>-->
+            <!--          </a-row>-->
+        </template>
 
         <a-form-item label="关键词" name="keywords">
           <a-select
@@ -201,19 +269,13 @@
 
         <div class="form-actions">
           <a-button type="default" @click="goBack" style="margin-right: 8px"
-            >取消</a-button
+          >取消
+          </a-button
           >
           <a-button type="primary" @click="saveDocument" :loading="saving"
-            >保存</a-button
+          >保存
+          </a-button
           >
-          <!--          <a-button-->
-          <!--            type="dashed"-->
-          <!--            @click="goToNoteEdit"-->
-          <!--            style="margin-left: auto"-->
-          <!--          >-->
-          <!--            <template #icon><EditOutlined /></template>-->
-          <!--            编辑阅读笔记-->
-          <!--          </a-button>-->
         </div>
       </a-form>
     </div>
@@ -221,7 +283,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from "vue";
+import { ref, onMounted, reactive, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus"; // ElMessage for consistency if used elsewhere
 import { message as AntMessage, Modal } from "ant-design-vue"; // Ant Design Vue message
@@ -229,6 +291,8 @@ import { ArrowLeft } from "@element-plus/icons-vue";
 import { UserAddOutlined, EditOutlined } from "@ant-design/icons-vue";
 import { getDocumentDetails, updateDocumentMetadata } from "@/api/load"; // Assuming getDocumentDetails is available
 import type { FormInstance, FormProps } from "ant-design-vue";
+
+const documentType = ref("other");
 
 interface Author {
   key?: number; // For v-for key binding
@@ -244,13 +308,15 @@ interface DocumentFormState {
   authors: Author[];
   doi: string | null;
   publishDate: string | null;
+  local_url?: string | null;
   journal: string | null;
+  journal_issue?: string | null; // Optional for journal type
+  conference_location?: string | null; // Optional for conference type
+  conference_time?: string | null; // Optional for conference type
   conference: string | null;
   keywords: string[];
   uploadTime: string | null;
   stars: number;
-  // Add other fields from mock data as needed
-  // e.g., folderId, path, note (if editable here)
 }
 
 const route = useRoute();
@@ -265,15 +331,19 @@ const documentForm = reactive<DocumentFormState>({
   authors: [],
   doi: null,
   publishDate: null,
+  local_url: null,
   journal: null,
+  journal_issue: null,
+  conference_location: null,
+  conference_time: null,
   conference: null,
   keywords: [],
   uploadTime: null,
-  stars: 0,
+  stars: 0
 });
 
 const formRules: FormProps["rules"] = {
-  title: [{ required: true, message: "请输入文献标题", trigger: "blur" }],
+  title: [{ required: true, message: "请输入文献标题", trigger: "blur" }]
   // Add more specific rules if needed
 };
 
@@ -301,15 +371,27 @@ const fetchDocumentDetails = async () => {
       sequence: docData.sequence?.[index] || "-",
       institution: docData.institutions?.[index] || "",
       location: docData.institution_location?.[index] || "",
-      email: docData.email?.[index] || "",
+      email: docData.email?.[index] || ""
     }));
     documentForm.doi = docData.doi || null;
     documentForm.publishDate = docData.publishDate || null;
+    documentForm.local_url = docData.local_url || null;
+    documentForm.journal_issue = docData.journal_issue || null;
+    documentForm.conference_location = docData.conference_location || null;
+    documentForm.conference_time = docData.conference_time || null;
     documentForm.journal = docData.journal || null;
     documentForm.conference = docData.conference || null;
     documentForm.keywords = docData.keywords || [];
     documentForm.uploadTime = docData.uploadTime || null;
     documentForm.stars = docData.stars || 0;
+
+    if (docData.journal) {
+      documentType.value = "journal";
+    } else if (docData.conference) {
+      documentType.value = "conference";
+    } else {
+      documentType.value = "other";
+    }
   } catch (error) {
     console.error("获取文档详情失败", error);
     AntMessage.error("获取文档详情失败");
@@ -325,23 +407,41 @@ const addAuthor = () => {
     sequence: "additional", // 更改默认值为 "additional"
     institution: "",
     location: "",
-    email: "",
+    email: ""
   });
 };
+
+watch(documentType, (newType) => {
+  if (newType === "journal") {
+    // 切换到期刊类型，清除会议相关数据
+    documentForm.conference = null;
+    documentForm.conference_location = null;
+    documentForm.conference_time = null;
+  } else if (newType === "conference") {
+    // 切换到会议类型，清除期刊相关数据
+    documentForm.journal = null;
+    documentForm.journal_issue = null;
+  }
+});
 
 const removeAuthor = (index: number) => {
   documentForm.authors.splice(index, 1);
 };
 
 // Method to synchronize institution locations
-const syncInstitutionLocation = (institutionName: string, newLocation: string) => {
+const syncInstitutionLocation = (
+  institutionName: string,
+  newLocation: string
+) => {
   if (!institutionName) return; // Only sync if institution name is present
-  documentForm.authors.forEach(author => {
+  documentForm.authors.forEach((author) => {
     if (author.institution === institutionName) {
       author.location = newLocation;
     }
   });
-  console.log(`Synced location for institution "${institutionName}" to "${newLocation}"`);
+  console.log(
+    `Synced location for institution "${institutionName}" to "${newLocation}"`
+  );
 };
 
 const saveDocument = async () => {
@@ -366,11 +466,17 @@ const saveDocument = async () => {
       email: emailsData,
       doi: documentForm.doi,
       publishDate: documentForm.publishDate,
+      local_url: documentForm.local_url,
       journal: documentForm.journal,
+      journal_issue: documentForm.journal_issue,
+      conference_location: documentForm.conference_location,
+      conference_time: documentForm.conference_time
+        ? documentForm.conference_time.format("YYYY-MM-DD")
+        : null,
       conference: documentForm.conference,
       keywords: documentForm.keywords,
       uploadTime: documentForm.uploadTime,
-      stars: documentForm.stars,
+      stars: documentForm.stars
       // folderId, path, note might also be part of the payload if editable
     };
 
@@ -398,7 +504,7 @@ const goToNoteEdit = () => {
       router.push(`/document/${documentId.value}`);
       // 显示提示
       setTimeout(() => {
-        AntMessage.info('请在详情页面点击"编辑笔记"按钮编辑阅读笔记');
+        AntMessage.info("请在详情页面点击\"编辑笔记\"按钮编辑阅读笔记");
       }, 500);
     })
     .catch((error) => {

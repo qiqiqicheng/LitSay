@@ -8,6 +8,11 @@
     >
       <template #extra>
         <a-space>
+          <!-- 新增参考文献表按钮 -->
+          <a-button type="primary" @click="showReferenceStyleModal">
+            <template #icon><book-outlined /></template>
+            参考文献表
+          </a-button>
           <a-button type="primary" @click="handleAddFolder">
             <template #icon><folder-add-outlined /></template>
             新建文件夹
@@ -47,7 +52,7 @@
                     v-if="record.type === 'folder'"
                     class="folder-icon"
                   />
-                  <file-pdf-outlined v-else class="document-icon" />
+                  <file-text-outlined v-else class="document-icon" />
                   <span
                     class="item-name"
                     :class="{ 'is-folder': record.type === 'folder' }"
@@ -145,6 +150,69 @@
     >
       <p>确定要删除"{{ deleteItemName }}"吗？此操作不可撤销。</p>
     </a-modal>
+
+    <!-- 新增参考文献格式选择对话框 -->
+    <a-modal
+      v-model:visible="referenceStyleVisible"
+      title="选择参考文献格式"
+      @ok="generateReferences"
+      okText="生成参考文献"
+      cancelText="取消"
+    >
+      <a-radio-group v-model:value="selectedReferenceStyle">
+        <a-radio value="gbt7714">China National Standard GB/T 7714-2015</a-radio>
+        <a-radio value="apa">American Psychological Association (APA)</a-radio>
+      </a-radio-group>
+      <div class="style-info" v-if="selectedReferenceStyle">
+        <a-alert
+          :message="getReferenceStyleInfo(selectedReferenceStyle)"
+          type="info"
+          show-icon
+        />
+      </div>
+    </a-modal>
+
+    <!-- 新增参考文献结果对话框 -->
+    <a-modal
+      v-model:visible="referenceResultVisible"
+      title="参考文献列表"
+      width="800px"
+      @ok="copyToClipboard"
+      okText="复制到剪贴板"
+      cancelText="关闭"
+    >
+      <a-spin :spinning="generatingReferences">
+        <div v-if="referenceList.length" class="reference-list-container">
+          <a-typography>
+            <a-typography-title :level="4">
+              已生成 {{ referenceList.length }} 条参考文献
+            </a-typography-title>
+            <a-typography-paragraph>
+              <span class="format-label">格式：</span>
+              <a-tag color="blue">{{ 
+                selectedReferenceStyle === 'gbt7714' ? 'GB/T 7714-2015' : 'APA' 
+              }}</a-tag>
+            </a-typography-paragraph>
+          </a-typography>
+          <a-divider />
+          <div class="references-content">
+            <!-- 修改列表渲染方式 -->
+            <div v-if="selectedReferenceStyle === 'gbt7714'">
+              <div v-for="(ref, index) in referenceList" :key="index" class="reference-item-gbt">
+                <span class="reference-number-gbt">[{{ index + 1 }}]</span>
+                <span v-html="ref"></span>
+              </div>
+            </div>
+            <ol v-else>
+              <li v-for="(ref, index) in referenceList" :key="index">
+                <div v-html="ref"></div>
+              </li>
+            </ol>
+          </div>
+        </div>
+        <a-empty v-else description="未找到可用于生成参考文献的文献" />
+      </a-spin>
+    </a-modal>
   </div>
 </template>
 
@@ -155,6 +223,7 @@ import { message } from "ant-design-vue";
 import {
   FolderOutlined,
   FilePdfOutlined,
+  FileTextOutlined,
   FolderAddOutlined,
   UploadOutlined,
   EditOutlined,
@@ -162,6 +231,7 @@ import {
   SettingOutlined,
   DeleteOutlined,
   MoreOutlined,
+  BookOutlined, // 添加图书图标
 } from "@ant-design/icons-vue";
 import {
   getFolderContents,
@@ -170,6 +240,7 @@ import {
   renameFolder,
   deleteDocument,
 } from "@/api/load";
+import { generateReferenceList } from "@/api/reference"; // 导入新的API函数
 
 // 定义表格列
 const columns = [
@@ -213,6 +284,13 @@ const renameForm = reactive({ id: "", type: "", newName: "" });
 const newFolderForm = reactive({ name: "" });
 const deleteItemName = ref("");
 const deleteItemInfo = reactive({ id: "", type: "" });
+
+// 参考文献相关状态
+const referenceStyleVisible = ref(false);
+const selectedReferenceStyle = ref<string>("gbt7714"); // 默认选择国标格式
+const referenceResultVisible = ref(false);
+const generatingReferences = ref(false);
+const referenceList = ref<string[]>([]);
 
 // 获取文件/文件夹显示名称
 const getItemDisplayName = (item: any): string => {
@@ -450,6 +528,98 @@ const downloadDocument = (documentId: string | number) => {
   message.info("开始下载文档...");
 };
 
+// 显示参考文献格式选择对话框
+const showReferenceStyleModal = () => {
+  referenceStyleVisible.value = true;
+};
+
+// 获取参考文献格式的详细描述
+const getReferenceStyleInfo = (style: string): string => {
+  if (style === 'gbt7714') {
+    return '中国国家标准 GB/T 7714-2015 格式，适用于中文学术论文';
+  } else if (style === 'apa') {
+    return 'American Psychological Association (APA) 格式，适用于英文学术论文';
+  }
+  return '';
+};
+
+// 生成参考文献
+const generateReferences = async () => {
+  if (!currentFolderId.value) {
+    message.error('无法获取当前文件夹ID');
+    return;
+  }
+
+  referenceStyleVisible.value = false;
+  referenceResultVisible.value = true;
+  generatingReferences.value = true;
+  
+  try {
+    const response = await generateReferenceList(
+      currentFolderId.value,
+      selectedReferenceStyle.value
+    );
+    
+    if (response.data?.code === 0) {
+      referenceList.value = response.data.data || [];
+      if (referenceList.value.length === 0) {
+        message.info('当前文件夹中没有可用于生成参考文献的文献');
+      }
+    } else {
+      message.error(response.data?.message || '生成参考文献失败');
+      referenceList.value = [];
+    }
+  } catch (error) {
+    console.error('生成参考文献出错', error);
+    message.error('生成参考文献失败，请重试');
+    referenceList.value = [];
+  } finally {
+    generatingReferences.value = false;
+  }
+};
+
+// 复制参考文献到剪贴板
+const copyToClipboard = async () => {
+  if (referenceList.value.length === 0) {
+    message.warning('没有可复制的参考文献');
+    return;
+  }
+  
+  try {
+    let formattedText = "";
+    if (selectedReferenceStyle.value === 'gbt7714') {
+      // GB/T 7714 格式：[序号] 内容
+      formattedText = referenceList.value
+        .map((ref, index) => `[${index + 1}] ${ref.replace(/<[^>]*>?/gm, '')}`) // 移除HTML标签
+        .join('\n\n');
+    } else {
+      // APA 格式：序号. 内容
+      formattedText = referenceList.value
+        .map((ref, index) => `${index + 1}. ${ref.replace(/<[^>]*>?/gm, '')}`) // 移除HTML标签
+        .join('\n\n');
+    }
+      
+    // 创建临时textarea元素以复制带格式的文本
+    const textarea = document.createElement('textarea');
+    textarea.value = formattedText;
+    document.body.appendChild(textarea);
+    textarea.select();
+    
+    const success = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    
+    if (success) {
+      message.success('参考文献已复制到剪贴板');
+      referenceResultVisible.value = false;
+    } else {
+      message.error('复制失败，请手动选择并复制');
+    }
+  } catch (error) {
+    console.error('复制到剪贴板失败', error);
+    message.error('复制到剪贴板失败');
+  }
+};
+
 // 监听路由参数变化
 watch(
   () => route.params.id,
@@ -531,5 +701,52 @@ onMounted(() => {
 
 :deep(.ant-dropdown-link:hover) {
   background-color: rgba(0, 0, 0, 0.03);
+}
+
+/* 添加参考文献相关样式 */
+.style-info {
+  margin-top: 16px;
+}
+
+.reference-list-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.references-content {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-top: 12px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 16px 24px;
+  background-color: #fafafa;
+}
+
+.references-content ol {
+  padding-left: 20px;
+}
+
+.references-content li {
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+/* GB/T 7714 参考文献列表项样式 */
+.reference-item-gbt {
+  margin-bottom: 12px;
+  line-height: 1.6;
+  display: flex; /* 使用flex布局以便对齐 */
+  align-items: flex-start; /* 顶部对齐 */
+}
+
+.reference-number-gbt {
+  margin-right: 8px; /* 序号和内容之间的间距 */
+  white-space: nowrap; /* 防止序号换行 */
+}
+
+.format-label {
+  font-weight: 500;
 }
 </style>

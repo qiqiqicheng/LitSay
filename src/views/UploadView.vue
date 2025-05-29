@@ -69,7 +69,7 @@
               <inbox-outlined />
             </p>
             <p class="ant-upload-text">点击或拖动PDF文件到此区域上传</p>
-            <p class="ant-upload-hint>
+            <p class="ant-upload-hint">
               支持批量上传PDF文件，将自动解析文献元数据
             </p>
           </a-upload-dragger>
@@ -135,10 +135,105 @@
               <template #icon><import-outlined /></template>
               批量导入元数据
             </a-button>
+            <!-- 添加格式要求按钮 -->
+            <a-button
+              type="link"
+              @click="showFormatRequirements = true"
+              size="large"
+            >
+              <template #icon><question-circle-outlined /></template>
+              具体要求
+            </a-button>
           </div>
         </a-tab-pane>
       </a-tabs>
     </a-card>
+
+    <!-- 格式要求浮窗 -->
+    <a-modal
+      v-model:visible="showFormatRequirements"
+      title="文件格式要求"
+      width="800px"
+      @cancel="showFormatRequirements = false"
+      :footer="null"
+    >
+      <a-tabs default-active-key="json">
+        <a-tab-pane key="json" tab="JSON格式">
+          <div class="format-requirements">
+            <p>
+              JSON文件应包含元数据数组，每个元素表示一个文献的元数据。格式如下：
+            </p>
+            <a-card class="code-card">
+              <pre class="code-block"><code>{{ jsonExample }}</code></pre>
+              <a-button
+                class="copy-btn"
+                type="primary"
+                size="small"
+                @click="copyToClipboard(jsonExample)"
+              >
+                <template #icon><copy-outlined /></template>
+                复制示例
+              </a-button>
+            </a-card>
+            <div class="format-notes">
+              <h4>要求说明：</h4>
+              <ul>
+                <li>必须是有效的JSON数组格式</li>
+                <li>title（标题）字段为必填项</li>
+                <li>authors（作者）应为字符串数组</li>
+                <li>
+                  sequence、institutions、institution_location、email等数组字段长度应与authors一致
+                </li>
+                <li>
+                  如提供journal字段，则conference相关字段应为null，反之亦然
+                </li>
+                <li>local_url字段可用于提供文献在本地存储的路径</li>
+              </ul>
+            </div>
+          </div>
+        </a-tab-pane>
+        <a-tab-pane key="csv" tab="CSV格式">
+          <div class="format-requirements">
+            <p>CSV文件第一行为字段名称，每行表示一个文献的元数据。格式如下：</p>
+            <a-table
+              :columns="csvColumns"
+              :data-source="csvData"
+              :pagination="false"
+              size="small"
+              bordered
+            ></a-table>
+            <div class="table-actions">
+              <a-button
+                type="primary"
+                size="small"
+                @click="copyToClipboard(csvExample)"
+              >
+                <template #icon><copy-outlined /></template>
+                复制CSV示例
+              </a-button>
+            </div>
+            <div class="format-notes">
+              <h4>要求说明：</h4>
+              <ul>
+                <li>CSV文件必须包含表头行</li>
+                <li>title（标题）字段为必填项</li>
+                <li>
+                  对于多值字段（如authors、keywords等），使用分号(;)分隔值
+                </li>
+                <li>
+                  sequence、institutions、institution_location、email等必须与authors一一对应
+                </li>
+                <li>
+                  如提供journal字段，则conference相关字段应为null，反之亦然
+                </li>
+                <li>日期格式推荐使用YYYY-MM-DD</li>
+                <li>空值可以使用空字符串或"null"表示</li>
+              </ul>
+            </div>
+          </div>
+        </a-tab-pane>
+      </a-tabs>
+    </a-modal>
 
     <!-- 解析结果预览与编辑弹窗 -->
     <a-modal
@@ -219,6 +314,18 @@
             </a-col>
           </a-row>
 
+          <!-- 添加文件本地路径字段 -->
+          <a-row :gutter="16">
+            <a-col :span="24">
+              <a-form-item label="文件本地路径">
+                <a-input
+                  v-model:value="currentParseResult.metadata.local_url"
+                  placeholder="文件在本地的存储路径"
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+
           <a-divider>作者信息</a-divider>
 
           <div class="authors-container">
@@ -269,10 +376,7 @@
                 </a-col>
                 <a-col :span="12">
                   <a-form-item label="机构所在地">
-                    <a-input 
-                      v-model:value="author.location" 
-                      @blur="syncInstitutionLocationInUpload(author.institution, author.location)"
-                    />
+                    <a-input v-model:value="author.location" />
                   </a-form-item>
                 </a-col>
               </a-row>
@@ -329,9 +433,43 @@
               </a-form-item>
             </a-col>
             <a-col :span="12">
+              <a-form-item label="期刊期号">
+                <a-input
+                  v-model:value="currentParseResult.metadata.journal_issue"
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-row :gutter="16">
+            <a-col :span="12">
               <a-form-item label="会议">
                 <a-input
                   v-model:value="currentParseResult.metadata.conference"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="12">
+              <a-form-item label="会议地点">
+                <a-input
+                  v-model:value="
+                    currentParseResult.metadata.conference_location
+                  "
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+
+          <a-row :gutter="16">
+            <a-col :span="12">
+              <a-form-item label="会议日期" name="conference_time">
+                <a-date-picker
+                  v-model:value="
+                    currentParseResult.metadata.conference_location
+                  "
+                  placeholder="选择会议日期"
+                  style="width: 100%"
+                  format="YYYY-MM-DD"
+                  value-format="YYYY-MM-DD"
                 />
               </a-form-item>
             </a-col>
@@ -346,6 +484,19 @@
               :token-separators="[',']"
             ></a-select>
           </a-form-item>
+
+          <!-- 添加文件本地路径预览和编辑
+          <a-row :gutter="16">
+            <a-col :span="24">
+              <a-form-item label="文件本地路径" required>
+                <a-input
+                  v-model:value="currentParseResult.metadata.local_url"
+                  placeholder="文件的本地路径"
+                  disabled
+                />
+              </a-form-item>
+            </a-col>
+          </a-row> -->
         </a-form>
       </div>
     </a-modal>
@@ -412,6 +563,8 @@ import {
   CloseCircleOutlined,
   DeleteOutlined, // 添加删除图标
   EyeOutlined, // 添加预览图标
+  QuestionCircleOutlined, // 添加问号图标
+  CopyOutlined, // 添加复制图标
 } from "@ant-design/icons-vue";
 import { getFolderStructure } from "@/api/load";
 import {
@@ -454,6 +607,7 @@ const uploadedFiles = ref<string[]>([]);
 
 // 计算属性
 const currentParseResult = computed(() => {
+  console.log("当前解析结果：", parseResults.value);
   if (
     parseResults.value.length &&
     currentStep.value < parseResults.value.length
@@ -550,8 +704,41 @@ function beforePdfUpload(file: File) {
     return Upload.LIST_IGNORE;
   }
 
+  // 尝试获取文件的本地路径
+  try {
+    // 将原始File对象扩展，添加localPath属性
+    const fileWithPath = Object.assign(file, {
+      localPath: extractLocalPath(file),
+    });
+
+    console.log("获取文件本地路径:", fileWithPath.localPath);
+  } catch (error) {
+    console.error("获取文件本地路径失败:", error);
+  }
+
   // 返回 false 阻止自动上传，而是等待用户点击"开始上传并解析"按钮
   return false;
+}
+
+// 提取本地路径的函数
+function extractLocalPath(file: File): string {
+  // 检查是否存在webkitRelativePath (仅适用于使用input type="file" webkitdirectory的情况)
+  if (file.webkitRelativePath) {
+    return file.webkitRelativePath;
+  }
+
+  // 尝试从文件属性中获取路径信息（在某些浏览器中可用）
+  if (file.path) {
+    return file.path;
+  }
+
+  // 尝试读取可能存在的非标准属性
+  if (file.localPath || file.filePath || file.fileName) {
+    return file.localPath || file.filePath || file.fileName;
+  }
+
+  // 如果无法获取真实路径，至少返回文件名
+  return file.name;
 }
 
 // 文件上传前验证 - 修改为只允许JSON和CSV
@@ -617,15 +804,20 @@ async function handlePdfUpload() {
         result = await parsePdfMetadata(file);
       }
 
-      // 将每个解析结果添加到列表中
+      // 将每个解析结果添加到列表中，合并local_url信息
       if (result && result.metadata) {
+        const localUrl = extractLocalPath(file);
+
         parseResults.value.push({
           fileName: file.name,
           file: file,
-          metadata: formatMetadata(result.metadata),
+          metadata: formatMetadata({
+            ...result.metadata,
+            local_url: localUrl, // 添加local_url到元数据
+          }),
         });
       }
-      // console.log("解析结果：", parseResults);
+      console.log("解析结果：", parseResults);
     }
 
     // 关闭加载提示
@@ -646,7 +838,7 @@ async function handlePdfUpload() {
   }
 }
 
-// 格式化元数据，确保包含所有必要的字段
+// 格式化元数据，确保包含所有必要的字段，包括local_url
 function formatMetadata(metadata: any) {
   const authors = metadata.authors || [];
   const formattedAuthors =
@@ -685,8 +877,12 @@ function formatMetadata(metadata: any) {
     doi: metadata.doi || null,
     publishDate: finalPublishDate, // 使用处理后的日期
     journal: metadata.journal || null,
+    journal_issue: metadata.journal_issue || null,
+    conference_location: metadata.conference_location || null,
+    conference_time: metadata.conference_time || null,
     conference: metadata.conference || null,
     keywords: metadata.keywords || [],
+    local_url: metadata.local_url || null, // 添加local_url字段
   };
 }
 
@@ -733,7 +929,7 @@ async function handleConfirmUpload() {
   confirmLoading.value = true;
 
   try {
-    // 将元数据从格式化后的对象转回API所需的格式
+    // 将元数据从格式化后的对象转回API所需的格式，包含local_url
     const metadataToUpload = parseResults.value.map((result) => {
       // 处理 authors 数组和相关字段
       const metadata = { ...result.metadata };
@@ -742,6 +938,9 @@ async function handleConfirmUpload() {
       const institutionsData = metadata.authors.map((a) => a.institution);
       const locationsData = metadata.authors.map((a) => a.location);
       const emailsData = metadata.authors.map((a) => a.email);
+
+      // 保存local_url，确保在删除格式化作者数组前先保存
+      const localUrl = metadata.local_url;
 
       // 删除格式化后的作者数组，使用分开的数组
       delete metadata.authors;
@@ -756,11 +955,13 @@ async function handleConfirmUpload() {
           institutions: institutionsData,
           institution_location: locationsData,
           email: emailsData,
+          local_url: localUrl, // 确保local_url被包含
         },
       };
     });
 
     // 调用API只上传元数据
+    console.log("准备上传的元数据：", metadataToUpload);
     const response = await saveMetadataOnly(
       metadataToUpload,
       selectedFolderId.value
@@ -894,16 +1095,149 @@ function getShortFileName(fileName: string) {
   return fileName;
 }
 
-// Method to synchronize institution locations within the upload modal
-const syncInstitutionLocationInUpload = (institutionName: string, newLocation: string) => {
-  if (!institutionName || !currentParseResult.value) return;
-  currentParseResult.value.metadata.authors.forEach((auth: any) => {
-    if (auth.institution === institutionName) {
-      auth.location = newLocation;
+// 添加格式要求浮窗控制变量
+const showFormatRequirements = ref(false);
+
+// JSON示例
+const jsonExample = ref(`[
+  {
+    "title": "机器学习算法综述",
+    "authors": ["张三", "李四", "王五"],
+    "sequence": ["first", "corresponding", "additional"],
+    "institutions": ["北京大学人工智能研究所", "清华大学计算机科学系", "中国科学院"],
+    "institution_location": ["北京, 中国", "北京, 中国", "上海, 中国"],
+    "email": ["zhangsan@pku.edu.cn", "lisi@tsinghua.edu.cn", "wangwu@cas.cn"],
+    "doi": "10.1038/s41586-020-2649-2",
+    "publishDate": "2023-03-21",
+    "journal": "Nature Machine Intelligence",
+    "journal_issue": "Vol. 5, Issue 3",
+    "conference": null,
+    "conference_location": null,
+    "conference_time": null,
+    "keywords": ["人工智能", "机器学习", "深度学习", "自然语言处理"],
+    "local_url": "C:\\\\Users\\\\Documents\\\\Papers\\\\机器学习算法综述.pdf"
+  },
+  {
+    "title": "深度学习在自然语言处理中的应用",
+    "authors": ["赵六", "钱七"],
+    "sequence": ["first", "additional"],
+    "institutions": ["复旦大学计算机科学学院", "上海交通大学"],
+    "institution_location": ["上海, 中国", "上海, 中国"],
+    "email": ["zhaoliu@fudan.edu.cn", "qianqi@sjtu.edu.cn"],
+    "doi": "10.1109/JPROC.2021.3067762",
+    "publishDate": "2022-05-17",
+    "journal": null,
+    "journal_issue": null,
+    "conference": "ACL 2022",
+    "conference_location": "都柏林, 爱尔兰",
+    "conference_time": "2022-05-22",
+    "keywords": ["深度学习", "自然语言处理", "Transformer", "BERT"],
+    "local_url": "D:\\\\论文\\\\NLP\\\\深度学习在自然语言处理中的应用.pdf"
+  }
+]`);
+
+// CSV示例和表格配置
+const csvExample =
+  ref(`title,authors,sequence,institutions,institution_location,email,doi,publishDate,journal,journal_issue,conference,conference_location,conference_time,keywords,local_url
+机器学习算法综述,张三;李四;王五,first;corresponding;additional,北京大学人工智能研究所;清华大学计算机科学系;中国科学院,北京 中国;北京 中国;北京 中国,zhangsan@pku.edu.cn;lisi@tsinghua.edu.cn;wangwu@cas.cn,10.1038/s41586-020-2649-2,2023-03-21,Nature Machine Intelligence,Vol. 5 Issue 3,null,null,null,人工智能;机器学习;深度学习;自然语言处理,C:\\Users\\Documents\\Papers\\机器学习算法综述.pdf
+深度学习在自然语言处理中的应用,赵六;钱七,first;additional,复旦大学计算机科学学院;上海交通大学,上海 中国;上海 中国,zhaoliu@fudan.edu.cn;qianqi@sjtu.edu.cn,10.1109/JPROC.2021.3067762,2022-05-17,null,null,ACL 2022,都柏林 爱尔兰,2022-05-22,深度学习;自然语言处理;Transformer;BERT,D:\\论文\\NLP\\深度学习在自然语言处理中的应用.pdf`);
+
+// CSV表格列定义
+const csvColumns = [
+  { title: "字段名", dataIndex: "field", key: "field", width: 150 },
+  { title: "示例值", dataIndex: "example", key: "example" },
+  { title: "说明", dataIndex: "description", key: "description" },
+];
+
+// CSV表格数据
+const csvData = [
+  {
+    key: "1",
+    field: "title",
+    example: "机器学习算法综述",
+    description: "文献标题（必填）",
+  },
+  {
+    key: "2",
+    field: "authors",
+    example: "张三;李四;王五",
+    description: "作者列表，使用分号(;)分隔",
+  },
+  {
+    key: "3",
+    field: "sequence",
+    example: "first;corresponding;additional",
+    description: "作者角色，与authors对应",
+  },
+  {
+    key: "4",
+    field: "institutions",
+    example: "北京大学人工智能研究所;...",
+    description: "作者单位，与authors对应",
+  },
+  {
+    key: "5",
+    field: "institution_location",
+    example: "北京, 中国;...",
+    description: "单位地址，与authors对应",
+  },
+  {
+    key: "6",
+    field: "doi",
+    example: "10.1038/s41586-020-2649-2",
+    description: "文献DOI号",
+  },
+  {
+    key: "7",
+    field: "publishDate",
+    example: "2023-03-21",
+    description: "发布日期，建议YYYY-MM-DD格式",
+  },
+  {
+    key: "8",
+    field: "journal",
+    example: "Nature Machine Intelligence",
+    description: "期刊名称，如有则conference相关字段为null",
+  },
+  {
+    key: "9",
+    field: "journal_issue",
+    example: "Vol. 5 Issue 3",
+    description: "期刊期号",
+  },
+  {
+    key: "10",
+    field: "conference",
+    example: "ACL 2022",
+    description: "会议名称，如有则journal相关字段为null",
+  },
+  {
+    key: "11",
+    field: "keywords",
+    example: "人工智能;机器学习;深度学习",
+    description: "关键词，使用分号(;)分隔",
+  },
+  {
+    key: "12",
+    field: "local_url",
+    example: "C:\\Users\\Documents\\Papers\\文件名.pdf",
+    description: "本地文件路径",
+  },
+];
+
+// 复制到剪贴板函数
+const copyToClipboard = (text: string) => {
+  navigator.clipboard.writeText(text).then(
+    () => {
+      message.success("已复制到剪贴板");
+    },
+    () => {
+      message.error("复制失败，请手动复制");
     }
-  });
-  console.log(`Synced location for institution "${institutionName}" to "${newLocation}" in upload modal`);
+  );
 };
+
+// ...existing code...
 </script>
 
 <style scoped>
@@ -930,7 +1264,9 @@ const syncInstitutionLocationInUpload = (institutionName: string, newLocation: s
 
 .upload-actions {
   margin-top: 24px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .ai-button {
@@ -1008,5 +1344,69 @@ const syncInstitutionLocationInUpload = (institutionName: string, newLocation: s
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+
+/* 格式要求浮窗样式 */
+.format-requirements {
+  padding: 10px 0;
+}
+
+.code-card {
+  position: relative;
+  margin-bottom: 16px;
+  background: #f5f5f5;
+}
+
+.code-block {
+  margin: 0;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  opacity: 0.8;
+}
+
+.copy-btn:hover {
+  opacity: 1;
+}
+
+.format-notes {
+  margin-top: 16px;
+  padding: 10px;
+  background: #fffbe6;
+  border: 1px solid #ffe58f;
+  border-radius: 4px;
+}
+
+.format-notes h4 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #d48806;
+}
+
+.format-notes ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.format-notes li {
+  margin-bottom: 4px;
+}
+
+.table-actions {
+  margin: 16px 0;
+  text-align: right;
 }
 </style>

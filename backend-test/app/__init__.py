@@ -76,6 +76,10 @@ def create_app(config_name='default'):
     # 注册容器蓝图（期刊/会议）
     from .container.routes import container_bp
     app.register_blueprint(container_bp, url_prefix='/api/container')
+    
+    # 注册参考文献蓝图
+    from .references.routes import references_bp
+    app.register_blueprint(references_bp, url_prefix='/api/references')
 
     # 全局 OPTIONS 请求处理器
     @app.route('/<path:path>', methods=['OPTIONS'])

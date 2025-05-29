@@ -31,7 +31,6 @@
           </template>
         </el-input>
 
-        <!-- 更新高级搜索浮窗，使用Ant Design Vue -->
         <a-popover
           placement="bottomRight"
           trigger="click"
@@ -69,7 +68,7 @@
                     v-model:value="dateRangeValue"
                     style="width: 100%"
                     format="YYYY-MM-DD"
-                    :get-popup-container="triggerNode => getPopupContainer()"
+                    :get-popup-container="(triggerNode) => getPopupContainer()"
                     @change="handleDateRangeChange"
                   />
                 </a-form-item>
@@ -81,11 +80,13 @@
                     mode="tags"
                     style="width: 100%"
                     placeholder="输入关键词后按回车添加"
-                    :get-popup-container="triggerNode => getPopupContainer()"
+                    :get-popup-container="(triggerNode) => getPopupContainer()"
                     :disabled="hasOrKeywords"
                     @keydown.enter.prevent="(e) => handleKeywordEnter(e, 'and')"
                   >
-                    <template v-if="advancedSearchForm.keywordsAnd.length === 0">
+                    <template
+                      v-if="advancedSearchForm.keywordsAnd.length === 0"
+                    >
                       <a-select-option value="使用AND搜索" disabled>
                         请输入关键词，按Enter添加
                       </a-select-option>
@@ -100,7 +101,7 @@
                     mode="tags"
                     style="width: 100%"
                     placeholder="输入关键词后按回车添加"
-                    :get-popup-container="triggerNode => getPopupContainer()"
+                    :get-popup-container="(triggerNode) => getPopupContainer()"
                     :disabled="hasAndKeywords"
                     @keydown.enter.prevent="(e) => handleKeywordEnter(e, 'or')"
                   >
@@ -123,7 +124,8 @@
             </div>
           </template>
           <template #trigger>
-            <span></span> <!-- 空的trigger模板，使用按钮点击触发 -->
+            <span></span>
+            <!-- 空的trigger模板，使用按钮点击触发 -->
           </template>
         </a-popover>
       </div>
@@ -265,7 +267,7 @@ import {
   Loading,
   Filter,
 } from "@element-plus/icons-vue";
-import dayjs from 'dayjs';
+import dayjs from "dayjs";
 
 // 修改导入方式，直接导入所需图标
 import UserOutlined from "@ant-design/icons-vue/UserOutlined";
@@ -347,11 +349,18 @@ const advancedSearchForm = ref<AdvancedSearchForm>({
 });
 
 // 为Ant Design的日期选择器添加dayjs值
-const dateRangeValue = ref<[dayjs.Dayjs | null, dayjs.Dayjs | null]>([null, null]);
+const dateRangeValue = ref<[dayjs.Dayjs | null, dayjs.Dayjs | null]>([
+  null,
+  null,
+]);
 
 // 处理日期范围变化
-const handleDateRangeChange = (dates: [dayjs.Dayjs | null, dayjs.Dayjs | null], dateStrings: [string, string]) => {
-  advancedSearchForm.value.dateRange = dateStrings[0] && dateStrings[1] ? dateStrings as [string, string] : null;
+const handleDateRangeChange = (
+  dates: [dayjs.Dayjs | null, dayjs.Dayjs | null],
+  dateStrings: [string, string]
+) => {
+  advancedSearchForm.value.dateRange =
+    dateStrings[0] && dateStrings[1] ? (dateStrings as [string, string]) : null;
 };
 
 // 用户信息
@@ -423,18 +432,18 @@ const hasOrKeywords = computed(() => {
 });
 
 // 处理关键词输入时的Enter键事件
-const handleKeywordEnter = (e: KeyboardEvent, type: 'and' | 'or') => {
+const handleKeywordEnter = (e: KeyboardEvent, type: "and" | "or") => {
   // 阻止默认行为，避免清除已输入的关键词
   e.preventDefault();
-  
+
   // 获取输入框元素
   const target = e.target as HTMLInputElement;
   const value = target.value?.trim();
-  
+
   // 如果有有效输入且不是空白字符
   if (value && value.length > 0) {
     // 根据类型添加到对应的关键词数组
-    if (type === 'and') {
+    if (type === "and") {
       if (!advancedSearchForm.value.keywordsAnd.includes(value)) {
         advancedSearchForm.value.keywordsAnd.push(value);
       }
@@ -443,9 +452,9 @@ const handleKeywordEnter = (e: KeyboardEvent, type: 'and' | 'or') => {
         advancedSearchForm.value.keywordsOr.push(value);
       }
     }
-    
+
     // 清空输入值，准备下一次输入
-    target.value = '';
+    target.value = "";
   }
 };
 
@@ -462,7 +471,7 @@ const resetAdvancedSearch = () => {
     authorCount: null,
     uploadTime: null,
   };
-  
+
   // 重置日期选择器
   dateRangeValue.value = [null, null];
 };
@@ -474,12 +483,12 @@ const toggleAdvancedSearch = () => {
     // 如果打开高级搜索，将当前搜索词转移到表单中
     advancedSearchForm.value.query = searchQuery.value;
     searchQuery.value = "";
-    
+
     // 如果有日期范围，转换为dayjs对象
     if (advancedSearchForm.value.dateRange) {
       dateRangeValue.value = [
         dayjs(advancedSearchForm.value.dateRange[0]),
-        dayjs(advancedSearchForm.value.dateRange[1])
+        dayjs(advancedSearchForm.value.dateRange[1]),
       ];
     }
   }
@@ -498,11 +507,17 @@ const performAdvancedSearch = () => {
   };
 
   // 修改验证逻辑：允许空搜索内容，但必须至少有一个筛选条件
-  if (!advancedParams.q.trim() && !advancedParams.keywordsAnd && !advancedParams.keywordsOr 
-      && !advancedParams.dateFrom && !advancedParams.dateTo) {
-    ElMessage.warning('请至少输入搜索内容、关键词或选择日期范围');
+  if (
+    !advancedParams.q.trim() &&
+    !advancedParams.keywordsAnd &&
+    !advancedParams.keywordsOr &&
+    !advancedParams.dateFrom &&
+    !advancedParams.dateTo
+  ) {
+    ElMessage.warning("请至少输入搜索内容、关键词或选择日期范围");
     return;
   }
+  console.log("执行高级搜索，参数：", advancedParams);
 
   // 跳转到搜索结果页面，带上高级搜索参数
   router.push({
@@ -594,13 +609,13 @@ const getPopupContainer = () => {
   if (headerCenterRef.value) {
     return headerCenterRef.value;
   }
-  
+
   // 如果ref未设置，尝试使用querySelector
-  const headerCenter = document.querySelector('.header-center');
+  const headerCenter = document.querySelector(".header-center");
   if (headerCenter) {
     return headerCenter as HTMLElement;
   }
-  
+
   // 最后回退到body
   return document.body;
 };
@@ -843,7 +858,8 @@ onMounted(() => {
 /* 确保popover位于正确位置 */
 :deep(.ant-popover-inner) {
   background: white;
-  box-shadow: 0 3px 6px -4px rgba(0,0,0,0.12), 0 6px 16px 0 rgba(0,0,0,0.08), 0 9px 28px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12),
+    0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
 }
 
 /* Ant表单元素样式调整 */
