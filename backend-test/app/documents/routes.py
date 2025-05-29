@@ -2,6 +2,7 @@ from flask import request, jsonify, current_app, g, send_file
 import os
 import json
 from werkzeug.utils import secure_filename
+from datetime import datetime, timezone
 
 from . import documents_bp
 from app.db import query_db
@@ -32,8 +33,7 @@ def get_document_details(document_id):
                    i.institution_name, i.institution_location, a.author_email
             FROM author a
             JOIN document_author da ON a.author_id = da.author_id
-            LEFT JOIN author_institution ai ON a.author_id = ai.author_id
-            LEFT JOIN institution i ON ai.institution_id = i.institution_id
+            LEFT JOIN institution i ON i.institution_id = da.institution_id
             WHERE da.document_id = %s
             ORDER BY CASE da.sequence
                 WHEN 'first' THEN 1
@@ -43,6 +43,7 @@ def get_document_details(document_id):
                 ELSE 5
             END
         """, (document_id,))
+        print(f"获取文档ID {document_id} 的作者信息: {authors_data}")
         
         keywords = query_db("""
             SELECT k.keyword_name
@@ -64,7 +65,10 @@ def get_document_details(document_id):
             "publishDate": document['publishDate'].strftime('%Y-%m-%d') if document['publishDate'] else None,
             "uploadTime": document['uploadTime'].strftime('%Y-%m-%d %H:%M:%S') if document['uploadTime'] else None,
             "journal": None,
+            "journal_issue": None,  # 期刊期号
+            "conference_time": None,  # 会议时间
             "conference": None,
+            "conference_location": None,  # 会议地点
             "keywords": [keyword['keyword_name'] for keyword in keywords],
             "folderId": document['folderId'],
             "folderName": document['folderName'],
@@ -85,7 +89,7 @@ def get_document_details(document_id):
         
         # 获取期刊或会议信息
         container_info = query_db("""
-            SELECT c.container_name, c.type
+            SELECT c.container_name, c.type, c.journal_issue, c.conference_time, c.conference_location
             FROM document d
             JOIN container c ON d.container_id = c.container_id
             WHERE d.document_id = %s
@@ -94,8 +98,11 @@ def get_document_details(document_id):
         if container_info:
             if container_info['type'] == 'journal':
                 result['journal'] = container_info['container_name']
+                result['journal_issue'] = container_info['journal_issue']
             else:
                 result['conference'] = container_info['container_name']
+                result['conference_time'] = container_info['conference_time']
+                result['conference_location'] = container_info['conference_location']
         
         return jsonify({
             "code": 0,
@@ -204,6 +211,7 @@ def delete_document(document_id):
 def update_document_metadata(document_id):
     user_id = g.current_user['user_id']
     data = request.json
+    format_string = '%a, %d %b %Y %H:%M:%S %Z'
     print("更新文档元数据:\n", data)
     
     if not data:
@@ -240,12 +248,17 @@ def update_document_metadata(document_id):
             # 确定容器类型
             container_type = 'journal' if data.get('journal') else 'conference'
             container_name = data.get('journal') or data.get('conference')
+            # 收集容器特定字段
+            journal_issue = data.get('journal_issue')
+            # conference_time = datetime.strptime(data.get('conference_time'), format_string)
+            conference_time = data.get('conference_time')
+            conference_location = data.get('conference_location')
             
             if container_name:
                 # 检查是否存在相同类型、名称的容器
                 existing_container = query_db(
-                    "SELECT container_id FROM container WHERE container_name = %s AND type = %s AND user_id = %s",
-                    (container_name, container_type, user_id),
+                    "SELECT container_id FROM container WHERE container_name = %s AND type = %s AND user_id = %s AND journal_issue = %s AND conference_time = %s AND conference_location = %s",
+                    (container_name, container_type, user_id, journal_issue, conference_time, conference_location),
                     one=True
                 )
                 
@@ -256,10 +269,6 @@ def update_document_metadata(document_id):
                 else:
                     # 创建新容器
                     print(f"创建新容器: name = {container_name}, type = {container_type}")
-                    # 收集容器特定字段
-                    journal_issue = data.get('journal_issue')
-                    conference_time = data.get('conference_time')
-                    conference_location = data.get('conference_location')
                     
                     new_container_id = query_db(
                         """INSERT INTO container 
