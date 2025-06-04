@@ -160,7 +160,9 @@
       cancelText="取消"
     >
       <a-radio-group v-model:value="selectedReferenceStyle">
-        <a-radio value="gbt7714">China National Standard GB/T 7714-2015</a-radio>
+        <a-radio value="gbt7714"
+          >China National Standard GB/T 7714-2015</a-radio
+        >
         <a-radio value="apa">American Psychological Association (APA)</a-radio>
       </a-radio-group>
       <div class="style-info" v-if="selectedReferenceStyle">
@@ -189,8 +191,8 @@
             </a-typography-title>
             <a-typography-paragraph>
               <span class="format-label">格式：</span>
-              <a-tag color="blue">{{ 
-                selectedReferenceStyle === 'gbt7714' ? 'GB/T 7714-2015' : 'APA' 
+              <a-tag color="blue">{{
+                selectedReferenceStyle === "gbt7714" ? "GB/T 7714-2015" : "APA"
               }}</a-tag>
             </a-typography-paragraph>
           </a-typography>
@@ -198,7 +200,11 @@
           <div class="references-content">
             <!-- 修改列表渲染方式 -->
             <div v-if="selectedReferenceStyle === 'gbt7714'">
-              <div v-for="(ref, index) in referenceList" :key="index" class="reference-item-gbt">
+              <div
+                v-for="(ref, index) in referenceList"
+                :key="index"
+                class="reference-item-gbt"
+              >
                 <span class="reference-number-gbt">[{{ index + 1 }}]</span>
                 <span v-html="ref"></span>
               </div>
@@ -535,43 +541,43 @@ const showReferenceStyleModal = () => {
 
 // 获取参考文献格式的详细描述
 const getReferenceStyleInfo = (style: string): string => {
-  if (style === 'gbt7714') {
-    return '中国国家标准 GB/T 7714-2015 格式，适用于中文学术论文';
-  } else if (style === 'apa') {
-    return 'American Psychological Association (APA) 格式，适用于英文学术论文';
+  if (style === "gbt7714") {
+    return "中国国家标准 GB/T 7714-2015 格式，适用于中文学术论文";
+  } else if (style === "apa") {
+    return "American Psychological Association (APA) 格式，适用于英文学术论文";
   }
-  return '';
+  return "";
 };
 
 // 生成参考文献
 const generateReferences = async () => {
   if (!currentFolderId.value) {
-    message.error('无法获取当前文件夹ID');
+    message.error("无法获取当前文件夹ID");
     return;
   }
 
   referenceStyleVisible.value = false;
   referenceResultVisible.value = true;
   generatingReferences.value = true;
-  
+
   try {
     const response = await generateReferenceList(
       currentFolderId.value,
       selectedReferenceStyle.value
     );
-    
+
     if (response.data?.code === 0) {
       referenceList.value = response.data.data || [];
       if (referenceList.value.length === 0) {
-        message.info('当前文件夹中没有可用于生成参考文献的文献');
+        message.info("当前文件夹中没有可用于生成参考文献的文献");
       }
     } else {
-      message.error(response.data?.message || '生成参考文献失败');
+      message.error(response.data?.message || "生成参考文献失败");
       referenceList.value = [];
     }
   } catch (error) {
-    console.error('生成参考文献出错', error);
-    message.error('生成参考文献失败，请重试');
+    console.error("生成参考文献出错", error);
+    message.error("生成参考文献失败，请重试");
     referenceList.value = [];
   } finally {
     generatingReferences.value = false;
@@ -581,42 +587,42 @@ const generateReferences = async () => {
 // 复制参考文献到剪贴板
 const copyToClipboard = async () => {
   if (referenceList.value.length === 0) {
-    message.warning('没有可复制的参考文献');
+    message.warning("没有可复制的参考文献");
     return;
   }
-  
+
   try {
     let formattedText = "";
-    if (selectedReferenceStyle.value === 'gbt7714') {
+    if (selectedReferenceStyle.value === "gbt7714") {
       // GB/T 7714 格式：[序号] 内容
       formattedText = referenceList.value
-        .map((ref, index) => `[${index + 1}] ${ref.replace(/<[^>]*>?/gm, '')}`) // 移除HTML标签
-        .join('\n\n');
+        .map((ref, index) => `[${index + 1}] ${ref.replace(/<[^>]*>?/gm, "")}`) // 移除HTML标签
+        .join("\n\n");
     } else {
       // APA 格式：序号. 内容
       formattedText = referenceList.value
-        .map((ref, index) => `${index + 1}. ${ref.replace(/<[^>]*>?/gm, '')}`) // 移除HTML标签
-        .join('\n\n');
+        .map((ref, index) => `${index + 1}. ${ref.replace(/<[^>]*>?/gm, "")}`) // 移除HTML标签
+        .join("\n\n");
     }
-      
+
     // 创建临时textarea元素以复制带格式的文本
-    const textarea = document.createElement('textarea');
+    const textarea = document.createElement("textarea");
     textarea.value = formattedText;
     document.body.appendChild(textarea);
     textarea.select();
-    
-    const success = document.execCommand('copy');
+
+    const success = document.execCommand("copy");
     document.body.removeChild(textarea);
-    
+
     if (success) {
-      message.success('参考文献已复制到剪贴板');
+      message.success("参考文献已复制到剪贴板");
       referenceResultVisible.value = false;
     } else {
-      message.error('复制失败，请手动选择并复制');
+      message.error("复制失败，请手动选择并复制");
     }
   } catch (error) {
-    console.error('复制到剪贴板失败', error);
-    message.error('复制到剪贴板失败');
+    console.error("复制到剪贴板失败", error);
+    message.error("复制到剪贴板失败");
   }
 };
 

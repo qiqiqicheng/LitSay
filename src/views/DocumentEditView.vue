@@ -3,9 +3,8 @@
     <div class="edit-header">
       <div class="back-button">
         <el-button @click="goBack" icon="ArrowLeft" size="small"
-        >返回
-        </el-button
-        >
+          >返回
+        </el-button>
       </div>
       <h1 class="edit-title">编辑文献信息</h1>
     </div>
@@ -79,9 +78,8 @@
                 >
                   <a-select-option value="first">第一作者</a-select-option>
                   <a-select-option value="corresponding"
-                  >通讯作者
-                  </a-select-option
-                  >
+                    >通讯作者
+                  </a-select-option>
                   <a-select-option value="additional">合作者</a-select-option>
                   <a-select-option value="other">其他</a-select-option>
                 </a-select>
@@ -236,20 +234,20 @@
                 />
               </a-form-item>
             </a-col>
-            <!--          </a-row>-->
-            <!--          <a-row :gutter="24">-->
-            <!--            <a-col :xs="24" :sm="12">-->
-            <!--              <a-form-item label="会议日期" name="conference_time">-->
-            <!--                <a-date-picker-->
-            <!--                  v-model:value="documentForm.conference_time"-->
-            <!--                  placeholder="选择会议日期"-->
-            <!--                  style="width: 100%"-->
-            <!--                  format="YYYY-MM-DD"-->
-            <!--                  value-format="YYYY-MM-DD"-->
-            <!--                />-->
-            <!--              </a-form-item>-->
-            <!--            </a-col>-->
-            <!--          </a-row>-->
+          </a-row>
+          <!--          <a-row :gutter="24">-->
+          <!--            <a-col :xs="24" :sm="12">-->
+          <!--              <a-form-item label="会议日期" name="conference_time">-->
+          <!--                <a-date-picker-->
+          <!--                  v-model:value="documentForm.conference_time"-->
+          <!--                  placeholder="选择会议日期"-->
+          <!--                  style="width: 100%"-->
+          <!--                  format="YYYY-MM-DD"-->
+          <!--                  value-format="YYYY-MM-DD"-->
+          <!--                />-->
+          <!--              </a-form-item>-->
+          <!--            </a-col>-->
+          <!--          </a-row>-->
         </template>
 
         <a-form-item label="关键词" name="keywords">
@@ -269,13 +267,11 @@
 
         <div class="form-actions">
           <a-button type="default" @click="goBack" style="margin-right: 8px"
-          >取消
-          </a-button
-          >
+            >取消
+          </a-button>
           <a-button type="primary" @click="saveDocument" :loading="saving"
-          >保存
-          </a-button
-          >
+            >保存
+          </a-button>
         </div>
       </a-form>
     </div>
@@ -339,11 +335,11 @@ const documentForm = reactive<DocumentFormState>({
   conference: null,
   keywords: [],
   uploadTime: null,
-  stars: 0
+  stars: 0,
 });
 
 const formRules: FormProps["rules"] = {
-  title: [{ required: true, message: "请输入文献标题", trigger: "blur" }]
+  title: [{ required: true, message: "请输入文献标题", trigger: "blur" }],
   // Add more specific rules if needed
 };
 
@@ -371,7 +367,7 @@ const fetchDocumentDetails = async () => {
       sequence: docData.sequence?.[index] || "-",
       institution: docData.institutions?.[index] || "",
       location: docData.institution_location?.[index] || "",
-      email: docData.email?.[index] || ""
+      email: docData.email?.[index] || "",
     }));
     documentForm.doi = docData.doi || null;
     documentForm.publishDate = docData.publishDate || null;
@@ -407,7 +403,7 @@ const addAuthor = () => {
     sequence: "additional", // 更改默认值为 "additional"
     institution: "",
     location: "",
-    email: ""
+    email: "",
   });
 };
 
@@ -476,7 +472,7 @@ const saveDocument = async () => {
       conference: documentForm.conference,
       keywords: documentForm.keywords,
       uploadTime: documentForm.uploadTime,
-      stars: documentForm.stars
+      stars: documentForm.stars,
       // folderId, path, note might also be part of the payload if editable
     };
 
@@ -504,7 +500,7 @@ const goToNoteEdit = () => {
       router.push(`/document/${documentId.value}`);
       // 显示提示
       setTimeout(() => {
-        AntMessage.info("请在详情页面点击\"编辑笔记\"按钮编辑阅读笔记");
+        AntMessage.info('请在详情页面点击"编辑笔记"按钮编辑阅读笔记');
       }, 500);
     })
     .catch((error) => {

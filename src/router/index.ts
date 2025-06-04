@@ -63,8 +63,8 @@ const routes: Array<RouteRecordRaw> = [
     name: "stats",
     component: () => import("../views/StatsView.vue"),
     meta: {
-      requiresAuth: true,
-      title: "统计",
+      requiresAuth: true, // 需要认证
+      title: "统计分析",
     },
   },
   {

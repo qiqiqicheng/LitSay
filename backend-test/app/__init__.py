@@ -80,6 +80,10 @@ def create_app(config_name='default'):
     # 注册参考文献蓝图
     from .references.routes import references_bp
     app.register_blueprint(references_bp, url_prefix='/api/references')
+    
+    # 注册统计分析蓝图
+    from .stats.routes import stats_bp
+    app.register_blueprint(stats_bp, url_prefix='/api/stats')
 
     # 全局 OPTIONS 请求处理器
     @app.route('/<path:path>', methods=['OPTIONS'])

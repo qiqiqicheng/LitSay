@@ -15,20 +15,17 @@ import { getCurrentUserId } from "./load";
  */
 export const generateReferenceList = async (
   folderId: string | number,
-  format: string = "gbt7714"
+  format = "gbt7714"
 ) => {
   try {
-    const response = await axios.get(
-      buildApiPath(`/references/generate`),
-      {
-        headers: getAuthHeaders(),
-        params: {
-          folderId,
-          format,
-          userId: getCurrentUserId(),
-        },
-      }
-    );
+    const response = await axios.get(buildApiPath(`/references/generate`), {
+      headers: getAuthHeaders(),
+      params: {
+        folderId,
+        format,
+        userId: getCurrentUserId(),
+      },
+    });
     return response;
   } catch (error) {
     console.error("生成参考文献列表失败", error);
@@ -42,12 +39,9 @@ export const generateReferenceList = async (
  */
 export const getSupportedReferenceFormats = async () => {
   try {
-    const response = await axios.get(
-      buildApiPath(`/references/formats`),
-      {
-        headers: getAuthHeaders(),
-      }
-    );
+    const response = await axios.get(buildApiPath(`/references/formats`), {
+      headers: getAuthHeaders(),
+    });
     return response;
   } catch (error) {
     console.error("获取支持的参考文献格式失败", error);
