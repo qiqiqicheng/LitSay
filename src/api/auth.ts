@@ -27,7 +27,12 @@ export const login = async (username: string, password: string) => {
 
     if (responseData.access_token) {
       token = responseData.access_token;
-      user = responseData.user;
+      user = {
+        id: responseData.user_id,
+        username: responseData.username,
+        role: responseData.role,
+      };
+      console.log(user);
     } else if (responseData.data && responseData.data.access_token) {
       token = responseData.data.access_token;
       user = responseData.data.user;

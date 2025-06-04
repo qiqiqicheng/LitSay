@@ -93,6 +93,16 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("../views/ConferenceDetailView.vue"),
     meta: { requiresAuth: true },
   },
+  // 添加用户管理页面路由
+  {
+    path: "/admin",
+    name: "admin",
+    component: () => import("../views/AdminView.vue"),
+    meta: { 
+      requiresAuth: true, 
+      requiresAdmin: true  // 添加管理员权限要求
+    },
+  },
 ];
 
 const router = createRouter({
@@ -100,16 +110,23 @@ const router = createRouter({
   routes,
 });
 
-// 添加路由守卫
+// 修改路由守卫，增加管理员验证
 router.beforeEach((to, from, next) => {
   console.log("Navigating to:", to.path);
-  console.log("From:", from.path);
-  console.log("require or not:", to.meta.requiresAuth);
   const isAuthenticated = !!localStorage.getItem("token");
-
-  console.log("Token:", localStorage.getItem("token"));
-
-  console.log("Is authenticated:", isAuthenticated);
+  
+  // 检查是否需要管理员权限
+  if (to.meta.requiresAdmin) {
+    const userInfo = localStorage.getItem("userInfo");
+    const isAdmin = userInfo ? JSON.parse(userInfo).role === "admin" : false;
+    
+    if (!isAdmin) {
+      // 不是管理员，重定向到首页
+      ElMessage.error("您没有访问此页面的权限");
+      next('/');
+      return;
+    }
+  }
 
   // 需要登录但未登录时重定向到登录页
   if (to.meta.requiresAuth && !isAuthenticated) {

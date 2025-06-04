@@ -27,7 +27,7 @@
             <a-card-meta title="文献总数">
               <template #description>
                 <div class="stats-number">
-                  {{ overviewData.documentsCount }}
+                  {{ overviewData.documentsCount || 0 }}
                 </div>
               </template>
             </a-card-meta>
@@ -49,7 +49,9 @@
             </template>
             <a-card-meta title="文件夹数量">
               <template #description>
-                <div class="stats-number">{{ overviewData.foldersCount }}</div>
+                <div class="stats-number">
+                  {{ overviewData.foldersCount || 0 }}
+                </div>
               </template>
             </a-card-meta>
           </a-card>
@@ -67,7 +69,9 @@
             </template>
             <a-card-meta title="收录作者数量">
               <template #description>
-                <div class="stats-number">{{ overviewData.authorsCount }}</div>
+                <div class="stats-number">
+                  {{ overviewData.authorsCount || 0 }}
+                </div>
               </template>
             </a-card-meta>
           </a-card>
@@ -80,6 +84,10 @@
           <a-card title="关键词文献数量 TOP 5" :loading="loading">
             <template #extra> <tag-outlined /> 关键词分析 </template>
             <div ref="keywordsChartContainer" style="height: 400px"></div>
+            <a-empty
+              v-if="keywordsTop.length === 0 && !loading"
+              description="暂无关键词数据"
+            />
           </a-card>
         </a-col>
       </a-row>
@@ -90,6 +98,17 @@
           <a-card title="作者星级评分 TOP 5" :loading="loading">
             <template #extra> <star-outlined /> 星级分析 </template>
             <div ref="authorsChartContainer" style="height: 400px"></div>
+            <div
+              v-if="allAuthorsHaveNullStars && !loading"
+              class="no-stars-warning"
+            >
+              <a-alert
+                message="暂无星级评分数据"
+                description="您尚未对任何文献进行星级评分，评分后将显示作者的星级统计"
+                type="info"
+                show-icon
+              />
+            </div>
           </a-card>
         </a-col>
       </a-row>
@@ -98,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import {
   BookOutlined,
   FolderOutlined,
@@ -110,7 +129,6 @@ import {
   getStatsOverview,
   getKeywordsTop,
   getAuthorsStarsTop,
-  getMockStatsData,
 } from "@/api/stats";
 import * as echarts from "echarts/core";
 import { BarChart, BarSeriesOption } from "echarts/charts";
@@ -152,7 +170,18 @@ const overviewData = ref({
   authorsCount: 0,
 });
 const keywordsTop = ref<Array<{ keyword: string; count: number }>>([]);
-const authorsStarsTop = ref<Array<{ author: string; stars: number }>>([]);
+const authorsStarsTop = ref<Array<{ author: string; stars: number | null }>>(
+  []
+);
+
+// 添加计算属性，检查是否所有作者都没有星级评分
+const allAuthorsHaveNullStars = computed(() => {
+  console.log("检查作者星级数据:", authorsStarsTop.value);
+  return (
+    authorsStarsTop.value.length > 0 &&
+    authorsStarsTop.value.every((item) => item.stars === null)
+  );
+});
 
 // Chart refs
 const keywordsChartContainer = ref<HTMLElement | null>(null);
@@ -160,35 +189,71 @@ const authorsChartContainer = ref<HTMLElement | null>(null);
 let keywordsChart: echarts.ECharts | null = null;
 let authorsChart: echarts.ECharts | null = null;
 
-// 获取统计数据
+// 获取统计数据 - 通过API获取
 const fetchStatsData = async () => {
   try {
     loading.value = true;
+    console.log("开始获取统计数据...");
 
-    // 是否使用模拟数据 - 实际项目中可根据环境变量或其他条件判断
-    const useMockData = true;
-
-    if (useMockData) {
-      // 使用模拟数据
-      const mockData = getMockStatsData();
-      overviewData.value = mockData.overview;
-      keywordsTop.value = mockData.keywordsTop;
-      authorsStarsTop.value = mockData.authorsStarsTop;
-    } else {
-      // 并行请求多个数据
+    // 并行请求各项数据
+    try {
       const [overviewResp, keywordsResp, authorsResp] = await Promise.all([
         getStatsOverview(),
         getKeywordsTop(),
         getAuthorsStarsTop(),
       ]);
 
-      overviewData.value = overviewResp.data;
-      keywordsTop.value = keywordsResp.data;
-      authorsStarsTop.value = authorsResp.data;
+      console.log("统计概览数据:", overviewResp);
+      console.log("关键词TOP5数据:", keywordsResp);
+      console.log("作者星级TOP5数据:", authorsResp);
+
+      // 解析返回的数据
+      if (overviewResp && overviewResp.code === 0) {
+        overviewData.value = overviewResp.data.overview || overviewResp.data;
+      }
+
+      if (keywordsResp && keywordsResp.code === 0) {
+        keywordsTop.value = keywordsResp.data.keywordsTop || keywordsResp.data;
+      }
+
+      if (authorsResp && authorsResp.code === 0) {
+        authorsStarsTop.value =
+          authorsResp.data.authorsStarsTop || authorsResp.data;
+      }
+    } catch (error) {
+      console.error("获取统计数据失败:", error);
+
+      // 如果并行请求失败，尝试单独调用获取所有数据
+      try {
+        const statsResponse = await getStatsOverview();
+
+        if (statsResponse && statsResponse.code === 0) {
+          const data = statsResponse.data;
+
+          overviewData.value = data.overview || {
+            documentsCount: 0,
+            foldersCount: 0,
+            authorsCount: 0,
+          };
+
+          keywordsTop.value = data.keywordsTop || [];
+          authorsStarsTop.value = data.authorsStarsTop || [];
+        }
+      } catch (fallbackError) {
+        console.error("获取统计数据彻底失败:", fallbackError);
+      }
     }
 
+    console.log("处理后的统计数据:", {
+      overview: overviewData.value,
+      keywordsTop: keywordsTop.value,
+      authorsStarsTop: authorsStarsTop.value,
+    });
+
     // 初始化图表
-    initCharts();
+    setTimeout(() => {
+      initCharts();
+    }, 100);
   } catch (error) {
     console.error("获取统计数据失败:", error);
   } finally {
@@ -196,13 +261,25 @@ const fetchStatsData = async () => {
   }
 };
 
+// 处理空数据或null值
+const processAuthorsStarsData = () => {
+  // 为空值设置默认值，这样图表可以正常显示
+  return authorsStarsTop.value.map((item) => ({
+    author: item.author,
+    // 如果stars为null，则设置为0并在界面提示
+    stars: item.stars === null ? 0 : item.stars,
+  }));
+};
+
 // 初始化图表
 const initCharts = () => {
   // 确保DOM元素已经挂载
   if (!keywordsChartContainer.value || !authorsChartContainer.value) {
+    console.error("图表容器DOM元素未找到");
     return;
   }
 
+  console.log("初始化关键词图表...");
   // 初始化关键词图表
   keywordsChart = echarts.init(keywordsChartContainer.value);
   const keywordsOption: ECOption = {
@@ -261,14 +338,23 @@ const initCharts = () => {
       },
     ],
   };
+
+  console.log("关键词图表配置:", keywordsOption);
   keywordsChart.setOption(keywordsOption);
+
+  console.log("初始化作者星级图表...");
+  // 处理作者星级数据，替换null值
+  const processedAuthorsData = processAuthorsStarsData();
+  console.log("处理后的作者星级数据:", processedAuthorsData);
 
   // 初始化作者星级图表
   authorsChart = echarts.init(authorsChartContainer.value);
   const authorsOption: ECOption = {
     title: {
       text: "作者星级评分",
-      subtext: "基于用户对文献的评分",
+      subtext: allAuthorsHaveNullStars.value
+        ? "暂无星级评分数据"
+        : "基于用户对文献的评分",
       left: "center",
     },
     tooltip: {
@@ -276,7 +362,14 @@ const initCharts = () => {
       axisPointer: {
         type: "shadow",
       },
-      formatter: "{b}: {c} 星",
+      formatter: function (params: any) {
+        const value = params[0].value;
+        const name = params[0].name;
+        if (value === 0 && allAuthorsHaveNullStars.value) {
+          return `${name}: 暂无评分`;
+        }
+        return `${name}: ${value} 星`;
+      },
     },
     grid: {
       left: "3%",
@@ -286,7 +379,7 @@ const initCharts = () => {
     },
     xAxis: {
       type: "category",
-      data: authorsStarsTop.value.map((item) => item.author),
+      data: processedAuthorsData.map((item) => item.author),
       axisTick: {
         alignWithLabel: true,
       },
@@ -294,29 +387,48 @@ const initCharts = () => {
     yAxis: {
       type: "value",
       name: "星级总数",
+      min: 0,
+      max: function (value: { max: number }) {
+        return allAuthorsHaveNullStars.value
+          ? 5
+          : Math.ceil(value.max * 1.2 || 5);
+      },
     },
     series: [
       {
         name: "星级评分",
         type: "bar",
         barWidth: "60%",
-        data: authorsStarsTop.value.map((item) => item.stars),
+        data: processedAuthorsData.map((item) => item.stars),
         itemStyle: {
-          color: "#fa8c16", // 使用不同颜色区分
+          color: function (params: any) {
+            // 如果所有作者都没有星级，使用灰色
+            return allAuthorsHaveNullStars.value ? "#d9d9d9" : "#fa8c16";
+          },
         },
         label: {
           show: true,
           position: "top",
-          formatter: "{c}",
+          formatter: function (params: any) {
+            const value = params.value;
+            if (value === 0 && allAuthorsHaveNullStars.value) {
+              return "暂无";
+            }
+            return value;
+          },
         },
         emphasis: {
           itemStyle: {
-            color: "#ffa940",
+            color: function (params: any) {
+              return allAuthorsHaveNullStars.value ? "#bfbfbf" : "#ffa940";
+            },
           },
         },
       },
     ],
   };
+
+  console.log("作者星级图表配置:", authorsOption);
   authorsChart.setOption(authorsOption);
 };
 
@@ -327,6 +439,7 @@ const handleResize = () => {
 };
 
 onMounted(() => {
+  console.log("StatsView组件已挂载，开始获取数据...");
   fetchStatsData();
   window.addEventListener("resize", handleResize);
 });
@@ -362,6 +475,10 @@ onUnmounted(() => {
   color: #262626;
   line-height: 1.2;
   margin-top: 8px;
+}
+
+.no-stars-warning {
+  margin-top: 20px;
 }
 
 /* 移动端适配 */

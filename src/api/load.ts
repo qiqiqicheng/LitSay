@@ -28,6 +28,7 @@ const isDevelopment = process.env.NODE_ENV === "not";
  */
 export const getCurrentUserId = (): string | null => {
   const userInfo = localStorage.getItem("userInfo");
+  console.log("获取到的数据：", userInfo);
   if (userInfo) {
     try {
       const parsedInfo = JSON.parse(userInfo);

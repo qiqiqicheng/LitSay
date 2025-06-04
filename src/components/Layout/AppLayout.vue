@@ -151,6 +151,10 @@
                 <template #icon><setting-outlined /></template>
                 设置
               </a-menu-item>
+              <a-menu-item v-if="isAdmin" key="manage" @click="goToAdmin">
+                <template #icon><team-outlined /></template>
+                用户管理
+              </a-menu-item>
               <a-menu-divider />
               <a-menu-item key="logout" @click="handleLogout">
                 <template #icon><logout-outlined /></template>
@@ -191,7 +195,7 @@
       </main>
     </div>
 
-    <!-- 用户控制浮窗 -->
+    <!-- 用户控制浮窗 - 修复挂载问题 -->
     <a-drawer
       title="个人资料"
       :visible="showUserDrawer"
@@ -225,9 +229,6 @@
             </a-descriptions-item>
             <a-descriptions-item label="ID">
               {{ userInfo.id || "N/A" }}
-            </a-descriptions-item>
-            <a-descriptions-item label="创建时间">
-              {{ userInfo.createdAt || "未知" }}
             </a-descriptions-item>
           </a-descriptions>
         </div>
@@ -276,11 +277,17 @@ import LogoutOutlined from "@ant-design/icons-vue/LogoutOutlined";
 import DownOutlined from "@ant-design/icons-vue/DownOutlined";
 import BarChartOutlined from "@ant-design/icons-vue/BarChartOutlined";
 import PlusOutlined from "@ant-design/icons-vue/PlusOutlined";
+import TeamOutlined from "@ant-design/icons-vue/TeamOutlined";
 
 import FolderTree from "@/components/FolderTree.vue";
 import { searchLibrary } from "@/api/load";
 import { logout } from "@/api/auth";
 import { useEventBus } from "@vueuse/core";
+
+// const goToManage = () => {
+//   // 假设管理中心的路由是 /manage
+//   router.push("/manage");
+// };
 
 // 添加这一行解决showUserDrawer未定义的问题
 const showUserDrawer = ref(false);
@@ -293,7 +300,18 @@ const icons = {
   DownOutlined,
   BarChartOutlined,
   PlusOutlined,
+  TeamOutlined,
 };
+
+const isManager = computed(() => {
+  // 修复isManager计算属性
+  return userInfo.role;
+});
+
+// 添加isAdmin计算属性
+const isAdmin = computed(() => {
+  return userInfo.role === "admin";
+});
 
 // 定义搜索结果类型
 interface SearchResult {
@@ -328,12 +346,6 @@ interface UserInfo {
 const router = useRouter();
 const searchQuery = ref("");
 const showAdvancedSearch = ref(false);
-
-// 移除搜索结果相关的变量
-// const searching = ref(false);
-// const searchResults = ref<SearchResult[]>([]);
-// const showSearchResults = ref(false);
-// let hideResultsTimeout: number | null = null;
 
 // 高级搜索相关
 const advancedSearchForm = ref<AdvancedSearchForm>({
@@ -386,14 +398,15 @@ const isLoggedIn = computed(() => {
 // 获取用户信息
 const getUserInfo = () => {
   // 从 localStorage 获取用户信息
+  console.log(localStorage);
   const storedUserInfo = localStorage.getItem("userInfo");
+  console.log(storedUserInfo);
   if (storedUserInfo) {
     try {
       const parsedInfo = JSON.parse(storedUserInfo);
       userInfo.username = parsedInfo.username || "";
       userInfo.role = parsedInfo.role || "";
       userInfo.id = parsedInfo.id || "";
-      userInfo.createdAt = parsedInfo.createdAt || "2023-01-01";
     } catch (e) {
       console.error("解析用户信息失败", e);
     }
@@ -590,6 +603,7 @@ const handleLogout = async () => {
 // 编辑个人资料
 const handleEditProfile = () => {
   ElMessage.info("编辑个人资料功能开发中...");
+  console.log("info:", userInfo);
 };
 
 // 修改密码
@@ -620,9 +634,10 @@ const getPopupContainer = () => {
   return document.body;
 };
 
-// 组件挂载时获取用户信息
+// 确保在组件挂载后才获取用户信息
 onMounted(() => {
   getUserInfo();
+  console.log("AppLayout组件已挂载，用户信息:", userInfo);
 });
 </script>
 
