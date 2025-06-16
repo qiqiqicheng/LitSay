@@ -217,7 +217,7 @@ def format_reference_gbt7714(document, authors):
         return reference.strip()
     
     except Exception as e:
-        print(f"格式化GB/T参考文献出错: {e}")
+        # print(f"格式化GB/T参考文献出错: {e}")
         return document.get('title', '格式化错误')
 
 def format_reference_apa(document, authors):
@@ -287,5 +287,5 @@ def format_reference_apa(document, authors):
         return reference.strip()
     
     except Exception as e:
-        print(f"格式化APA参考文献出错: {e}")
+        # print(f"格式化APA参考文献出错: {e}")
         return document.get('title', '格式化错误')

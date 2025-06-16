@@ -38,7 +38,7 @@ def get_stats_overview():
             WHERE d.user_id = %s
         """, (user_id,), one=True)['count']
         
-        print(f"获取统计概览: 文献数量={documents_count}, 文件夹数量={folders_count}, 作者数量={authors_count}")
+        # print(f"获取统计概览: 文献数量={documents_count}, 文件夹数量={folders_count}, 作者数量={authors_count}")
         
         return jsonify({
             "code": 0,
@@ -81,7 +81,7 @@ def get_keywords_top5():
             LIMIT 5
         """, (user_id,))
         
-        print(f"获取关键词TOP5: {keywords_top}")
+        # print(f"获取关键词TOP5: {keywords_top}")
         
         # 如果没有数据，返回空列表
         if not keywords_top:
@@ -127,7 +127,7 @@ def get_authors_top5():
                 LIMIT 5
             """, (user_id,))
             
-            print(f"获取作者星级TOP5: {author_stars}")
+            # print(f"获取作者星级TOP5: {author_stars}")
             
             # 如果查询结果为空或stars全为0,则改用模拟数据
             if not author_stars or all(author['stars'] == 0 for author in author_stars):

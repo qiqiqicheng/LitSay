@@ -96,21 +96,22 @@ def save_metadata_only():
                     # 查找已有期刊或创建新的
                     cursor.execute("""
                         SELECT container_id FROM container 
-                        WHERE container_name = %s AND type = 'journal' AND user_id = %s
-                    """, (journal, user_id))
+                        WHERE container_name = %s AND type = 'journal' AND user_id = %s AND journal_issue = %s
+                    """, (journal, user_id, journal_issue))
                     
                     container_result = cursor.fetchone()
                     
                     if container_result:
+                        print(f"找到现有期刊: {journal}")
                         container_id = container_result['container_id']
                         
-                        # 更新期刊期号
-                        if journal_issue:
-                            cursor.execute("""
-                                UPDATE container SET journal_issue = %s 
-                                WHERE container_id = %s AND user_id = %s
-                            """, (journal_issue, container_id, user_id))
-                            conn.commit()  # 确保每次更新后提交事务
+                        # # 更新期刊期号
+                        # if journal_issue:
+                        #     cursor.execute("""
+                        #         UPDATE container SET journal_issue = %s 
+                        #         WHERE container_id = %s AND user_id = %s
+                        #     """, (journal_issue, container_id, user_id))
+                        #     conn.commit()  # 确保每次更新后提交事务
                     else:
                         # 创建新期刊
                         cursor.execute("""
@@ -127,8 +128,8 @@ def save_metadata_only():
                     # 查找已有会议或创建新的
                     cursor.execute("""
                         SELECT container_id FROM container 
-                        WHERE container_name = %s AND type = 'conference' AND user_id = %s
-                    """, (conference, user_id))
+                        WHERE container_name = %s AND type = 'conference' AND user_id = %s AND conference_location = %s AND conference_time = %s
+                    """, (conference, user_id, conference_location, conference_time))
                     
                     container_result = cursor.fetchone()
                     
@@ -136,14 +137,14 @@ def save_metadata_only():
                         container_id = container_result['container_id']
                         
                         # 更新会议信息
-                        if conference_time or conference_location:
-                            cursor.execute("""
-                                UPDATE container SET 
-                                conference_time = COALESCE(%s, conference_time),
-                                conference_location = COALESCE(%s, conference_location)
-                                WHERE container_id = %s AND user_id = %s
-                            """, (conference_time, conference_location, container_id, user_id))
-                            conn.commit()  # 确保每次更新后提交事务
+                        # if conference_time or conference_location:
+                        #     cursor.execute("""
+                        #         UPDATE container SET 
+                        #         conference_time = COALESCE(%s, conference_time),
+                        #         conference_location = COALESCE(%s, conference_location)
+                        #         WHERE container_id = %s AND user_id = %s
+                        #     """, (conference_time, conference_location, container_id, user_id))
+                        #     conn.commit()  # 确保每次更新后提交事务
                     else:
                         # 创建新会议
                         cursor.execute("""
@@ -189,6 +190,7 @@ def save_metadata_only():
                         
                         if author_result:
                             author_id = author_result['author_id']
+                            print(f"找到现有作者: {author_name}, author_id = {author_id}")
                             
                             # 更新作者邮箱如果提供了新的
                             if author_email:
@@ -199,6 +201,7 @@ def save_metadata_only():
                                 conn.commit()  # 提交更新
                         else:
                             # 创建新作者
+                            print(f"未找到现有作者，创建新作者: {author_name}, email = {author_email}")
                             cursor.execute("""
                                 INSERT INTO author (author_name, author_email, user_id)
                                 VALUES (%s, %s, %s)
@@ -221,6 +224,7 @@ def save_metadata_only():
                             
                             if institution_result:
                                 institution_id = institution_result['institution_id']
+                                print(f"找到现有机构: {institution_name}, institution_id = {institution_id}")
                                 
                                 # 更新机构位置如果提供了新的
                                 if institution_location:
@@ -231,6 +235,7 @@ def save_metadata_only():
                                     conn.commit()  # 提交更新
                             else:
                                 # 创建新机构
+                                print(f"未找到现有机构，创建新机构: {institution_name}, location = {institution_location}")
                                 cursor.execute("""
                                     INSERT INTO institution (institution_name, institution_location, user_id)
                                     VALUES (%s, %s, %s)
@@ -242,17 +247,28 @@ def save_metadata_only():
                                 institution_id = cursor.fetchone()['institution_id']
                         
                         # 创建文档-作者关联
+                        print(f"创建文档-作者关联: document_id = {document_id}, author_id = {author_id}, institution_id = {institution_id}, sequence = {author_sequence}")
                         cursor.execute("""
                             INSERT INTO document_author (document_id, author_id, institution_id, sequence)
                             VALUES (%s, %s, %s, %s)
                         """, (document_id, author_id, institution_id, author_sequence))
                         conn.commit()  # 提交创建关联事务
                         # 附带创建作者-机构关联
+                        
+                        # 先检查是否已有作者机构关联
                         cursor.execute("""
-                            INSERT INTO author_institution (author_id, institution_id)
-                            VALUES (%s, %s)
+                            SELECT 1 FROM author_institution
+                            WHERE author_id = %s AND institution_id = %s
                         """, (author_id, institution_id))
-                        conn.commit()  # 提交作者-机构关联事务
+                        existing_relation = cursor.fetchone()
+                        
+                        if not existing_relation:    
+                            print(f"创建新的作者-机构关联: author_id = {author_id}, institution_id = {institution_id}")
+                            cursor.execute("""
+                                INSERT INTO author_institution (author_id, institution_id)
+                                VALUES (%s, %s)
+                            """, (author_id, institution_id))
+                            conn.commit()  # 提交作者-机构关联事务
                     
                     # 处理关键字
                     for keyword in keywords:
@@ -268,6 +284,7 @@ def save_metadata_only():
                         keyword_result = cursor.fetchone()
                         
                         if keyword_result:
+                            print(f"找到现有关键字: {keyword}, keyword_id = {keyword_result['keyword_id']}")
                             keyword_id = keyword_result['keyword_id']
                         else:
                             # 创建新关键字

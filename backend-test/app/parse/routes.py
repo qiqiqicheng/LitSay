@@ -54,7 +54,7 @@ def get_metadata_from_crossref(doi):
         response = requests.get(url, headers=headers)
         
         if response.status_code != 200:
-            current_app.logger.error(f"Crossref API error: {response.status_code}")
+            # print(f"Crossref API error: {response.status_code}")
             return None, time.time() - start_time
         
         data = response.json()
@@ -438,7 +438,7 @@ def parse_pdf_metadata_with_ai():
             # 清理临时文件
             os.remove(file_path)
             
-            print(f"AI解析结果: {metadata}")  # 调试输出
+            # print(f"AI解析结果: {metadata}")  # 调试输出
             
             if metadata:
                 return jsonify({
